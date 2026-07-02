@@ -1,0 +1,48 @@
+Building a website for publications
+
+
+Publisher: select later
+	-> Journals: 8 (Business, AI, Environment, Biomedical, social science, computer science etc.)
+
+Authors: 
+	-> Submit paper in Journal template (form, email, whatsapp)
+	-> Reviewer certificate 
+	-> APC payment (paypal)
+
+Papers:
+	-> unique number
+	-> title can not match with other published papers in our journal
+	-> doi unique number
+	-> type
+	-< author list
+	-> abstract
+	-> pdf
+
+ Journal:
+	-> Name
+	-> Current Issue
+	-> Archive issues
+	-> Indexing
+	-> Author guidelines
+	-> APC
+	-> Editorial Team
+
+
+Goal: money (illegal)
+	-> Service: easy and fast publication, author profile 
+	-> contact medium WhatsApp
+
+- DOI registration
+
+Website to follow: https://al-kindipublisher.com/
+
+
+
+
+
+
+
+
+
+
+
