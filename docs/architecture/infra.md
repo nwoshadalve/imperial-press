@@ -46,11 +46,12 @@ infra/
 │   └── docker-compose.prod.yml     # Prod overrides (restart policies, resource limits)
 ├── docker/
 │   ├── web/
-│   │   └── Dockerfile              # Next.js 16 multi-stage build
+│   │   └── Dockerfile              # Next.js multi-stage build (context: frontend-web/)
 │   ├── admin/
-│   │   └── Dockerfile              # React + Vite multi-stage build
+│   │   ├── Dockerfile              # React + Vite multi-stage build (context: frontend-admin/)
+│   │   └── nginx.conf              # SPA fallback — all routes → index.html
 │   └── api/
-│       └── Dockerfile              # FastAPI (Python 3.14)
+│       └── Dockerfile              # FastAPI (context: backend/)
 ├── nginx/
 │   └── conf.d/
 │       ├── imperialpress.conf      # Public site (imperialpress.com)
@@ -78,16 +79,13 @@ Multi-stage build. The `builder` stage compiles the app; the `runner` stage is a
 FROM node:22-alpine AS builder
 WORKDIR /app
 
-# Copy workspace root and web package files
-COPY package.json package-lock.json ./
-COPY packages/ ./packages/
-COPY frontend/web/package.json ./frontend/web/
+COPY frontend-web/package.json frontend-web/package-lock.json ./
 
-RUN npm ci --workspace=frontend/web --workspace=packages/types --workspace=packages/ui
+RUN npm ci
 
-COPY frontend/web ./frontend/web
+COPY frontend-web/ .
 
-RUN npm run build --workspace=frontend/web
+RUN npm run build
 
 # Stage 2 — minimal runtime image
 FROM node:22-alpine AS runner
@@ -99,14 +97,14 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs \
  && adduser  --system --uid 1001 nextjs
 
-COPY --from=builder --chown=nextjs:nodejs /app/frontend/web/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/frontend/web/.next/static ./frontend/web/.next/static
-COPY --from=builder --chown=nextjs:nodejs /app/frontend/web/public ./frontend/web/public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
 USER nextjs
 EXPOSE 3000
 
-CMD ["node", "frontend/web/server.js"]
+CMD ["node", "server.js"]
 ```
 
 Key points:
@@ -126,20 +124,18 @@ Vite builds to static files. Nginx (a separate lightweight container) serves the
 FROM node:22-alpine AS builder
 WORKDIR /app
 
-COPY package.json package-lock.json ./
-COPY packages/ ./packages/
-COPY frontend/admin/package.json ./frontend/admin/
+COPY frontend-admin/package.json frontend-admin/package-lock.json ./
 
-RUN npm ci --workspace=frontend/admin --workspace=packages/types --workspace=packages/ui
+RUN npm ci
 
-COPY frontend/admin ./frontend/admin
+COPY frontend-admin/ .
 
-RUN npm run build --workspace=frontend/admin
+RUN npm run build
 
 # Stage 2 — serve with nginx
 FROM nginx:1.27-alpine AS runner
 
-COPY --from=builder /app/frontend/admin/dist /usr/share/nginx/html
+COPY --from=builder /app/dist /usr/share/nginx/html
 COPY infra/docker/admin/nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 3001
@@ -182,13 +178,13 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 WORKDIR /app
 
 # Copy dependency files first (layer cache)
-COPY backend/pyproject.toml backend/uv.lock ./
+COPY pyproject.toml uv.lock ./
 
 # Install dependencies into the system Python (no venv needed in container)
 RUN uv sync --frozen --no-dev
 
 # Copy application code
-COPY backend/ .
+COPY . .
 
 RUN addgroup --system --gid 1001 fastapi \
  && adduser  --system --uid 1001 fastapi
@@ -218,8 +214,8 @@ services:
 
   web:
     build:
-      context: ../../
-      dockerfile: infra/docker/web/Dockerfile
+      context: ../../frontend-web
+      dockerfile: ../infra/docker/web/Dockerfile
     image: imperial-press/web:latest
     networks: [internal]
     environment:
@@ -229,15 +225,15 @@ services:
 
   admin:
     build:
-      context: ../../
-      dockerfile: infra/docker/admin/Dockerfile
+      context: ../../frontend-admin
+      dockerfile: ../infra/docker/admin/Dockerfile
     image: imperial-press/admin:latest
     networks: [internal]
 
   api:
     build:
-      context: ../../
-      dockerfile: infra/docker/api/Dockerfile
+      context: ../../backend
+      dockerfile: ../infra/docker/api/Dockerfile
     image: imperial-press/api:latest
     networks: [internal]
     environment:
@@ -351,20 +347,24 @@ services:
 
   web:
     build:
-      target: builder          # Stop at builder stage; don't produce runner image
+      context: ../../frontend-web
+      dockerfile: ../infra/docker/web/Dockerfile
+      target: builder
     volumes:
-      - ../../frontend/web:/app/frontend/web
-      - /app/frontend/web/.next
+      - ../../frontend-web:/app
+      - /app/.next
     environment:
       - NODE_ENV=development
-    command: npm run dev --workspace=frontend/web
+    command: npm run dev
 
   admin:
     build:
+      context: ../../frontend-admin
+      dockerfile: ../infra/docker/admin/Dockerfile
       target: builder
     volumes:
-      - ../../frontend/admin:/app/frontend/admin
-    command: npm run dev --workspace=frontend/admin
+      - ../../frontend-admin:/app
+    command: npm run dev
 
   api:
     volumes:
