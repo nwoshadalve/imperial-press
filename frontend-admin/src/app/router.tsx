@@ -1,12 +1,15 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
+import { HydrateFallback } from '@/components/common/HydrateFallback'
 
 export const router = createBrowserRouter([
   {
     path: '/login',
+    HydrateFallback,
     lazy: () => import('@/pages/auth/LoginPage').then(m => ({ Component: m.default })),
   },
   {
     path: '/',
+    HydrateFallback,
     lazy: () => import('@/components/layout/AdminLayout').then(m => ({ Component: m.default })),
     children: [
       { index: true, element: <Navigate to="/dashboard" replace /> },
@@ -95,5 +98,15 @@ export const router = createBrowserRouter([
       },
     ],
   },
-  { path: '*', element: <Navigate to="/dashboard" replace /> },
+  {
+    path: '/',
+    HydrateFallback,
+    lazy: () => import('@/components/layout/AdminLayout').then(m => ({ Component: m.default })),
+    children: [
+      {
+        path: '*',
+        lazy: () => import('@/pages/errors/NotFoundPage').then(m => ({ Component: m.default })),
+      },
+    ],
+  },
 ])

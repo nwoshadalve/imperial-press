@@ -2,26 +2,20 @@ import { useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import TopBar from './TopBar'
-import { useUiStore } from '@/stores/uiStore'
 
 export default function AdminLayout() {
-  const { sidebarCollapsed, setSidebarCollapsed } = useUiStore()
   const [mobileOpen, setMobileOpen] = useState(false)
 
   return (
-    <div className="flex min-h-screen bg-neutral-100 dark:bg-neutral-900">
+    <div className="min-h-screen bg-[var(--color-bg-base)]">
       <Sidebar
-        collapsed={sidebarCollapsed}
-        onCollapse={setSidebarCollapsed}
         mobileOpen={mobileOpen}
         onMobileClose={() => setMobileOpen(false)}
       />
-      <div className="flex flex-1 flex-col">
-        <TopBar onToggleMobileSidebar={() => setMobileOpen(open => !open)} />
-        <main className="flex-1 p-6">
-          <Outlet />
-        </main>
-      </div>
+      <TopBar onToggleMobileSidebar={() => setMobileOpen(o => !o)} />
+      <main className="min-h-screen overflow-auto bg-white p-4 pt-[calc(3.5rem+1rem)] shadow-[0_0_16px_rgba(0,0,0,0.07)] dark:bg-neutral-950 dark:shadow-[0_0_16px_rgba(0,0,0,0.35)] md:ml-56 md:p-6 md:pt-[calc(3.5rem+1.5rem)]">
+        <Outlet />
+      </main>
     </div>
   )
 }
