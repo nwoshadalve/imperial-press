@@ -50,12 +50,12 @@ All components are open-source and self-hosted on a single VM. No external paid 
 |---|---|---|
 | Public website | **Next.js v15** (App Router) | SSR/SSG for SEO; academic content must rank in Google Scholar and search engines |
 | Admin panel | **React + Vite** | Private SPA with no SEO requirement; faster and lighter than Next.js for internal tooling |
-| Admin UI components | **Ant Design** | Pre-built tables, forms, file upload, date pickers — saves development time on data-heavy screens |
+| Admin UI components | **Tailwind CSS + Radix UI** | Unstyled, accessible primitives (dialogs, dropdowns, selects) owned and styled in-repo; paired with TanStack Table and react-day-picker for data-heavy screens — no separate design system to reconcile with Tailwind |
 | Backend API | **FastAPI** (Python) | High-performance REST API; auto-generates Swagger docs; excellent for data-heavy applications |
 | ORM | **SQLAlchemy** | Industry-standard Python ORM; mature and battle-tested |
 | Database | **PostgreSQL** | Reliable relational database for all structured academic data |
 | Search engine | **MeiliSearch** | Open-source, self-hosted; instant full-text search with typeahead |
-| File storage | **Local filesystem** (VM disk) | FastAPI serves PDFs and images directly to disk; zero-cost; migratable to object storage later |
+| File storage | **Garage v2.3.0** (self-hosted S3-compatible) | Private files (manuscripts, certificates, payment proofs) served via presigned URLs; public assets (journal covers, logos, photos) served directly through Nginx → Garage web endpoint; FastAPI never streams binary files |
 | Styling (public) | **Tailwind CSS** | Built-in dark/light mode; mobile-first responsive utilities |
 | Infrastructure | **Docker Compose** | Single `docker-compose.yml` manages all services on the VM |
 

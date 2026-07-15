@@ -1,6 +1,6 @@
 # Architecture — frontend/admin (Admin Panel)
 
-**Tech:** React 19.2 · Vite 8.1 · TypeScript 6.0 · Ant Design 6.5 · Tailwind CSS 4.3  
+**Tech:** React 19.2 · Vite 8.1 · TypeScript 6.0 · Tailwind CSS 4.3 · Radix UI  
 **Serves:** Imperial Press internal staff (admins / editors)  
 **URL:** `admin.imperialpress.com` (Nginx → port 3001)
 
@@ -14,78 +14,44 @@ The admin panel is **fully mobile-responsive**. Staff can manage submissions, re
 
 ---
 
-## 2. Styling Architecture — Tailwind v4 + Ant Design 6
+## 2. Styling Architecture — Tailwind v4 + Radix UI (shadcn/ui pattern)
 
-Two libraries, one clear division of ownership:
+No pre-styled component library (no Ant Design, no Mantine, no MUI). Instead, the same approach as `frontend/web`: **Tailwind for all styling**, plus **unstyled Radix UI primitives** for the handful of components that need real accessible behaviour (focus trapping, keyboard nav, portals) — dialogs, dropdowns, popovers, selects, tabs, toasts, tooltips. Components are written directly in this repo (the "shadcn/ui" pattern: copy the component, own the code — not an installed design system) in `src/components/ui/`.
 
 | Concern | Tool | Why |
 |---|---|---|
 | Responsive layout, breakpoints, grid, flex, spacing | **Tailwind CSS v4** | Purpose-built responsive utilities; mobile-first breakpoints in two characters |
-| UI components — Table, Form, Modal, Drawer, Upload, Select, DatePicker | **Ant Design 6** | 80+ production-ready data-heavy components; saves weeks of build time |
-| Dark / light / custom theme switching | **Ant Design `ConfigProvider`** | v6 CSS variable mode — instant theme swap, no re-render cost |
-| Colour token sync between both libraries | AntD CSS vars → Tailwind `@theme` | One source of truth; Tailwind colour utilities match the AntD palette |
+| Accessible interactive primitives — Dialog, DropdownMenu, Popover, Select, Tabs, Toast, Tooltip | **Radix UI** | Unstyled, WAI-ARIA compliant behaviour; we own all visual styling via Tailwind, no CSS-in-JS |
+| Data tables (sortable, paginated, filterable) | **TanStack Table** | Headless table logic; rows/cells rendered as plain Tailwind-styled markup; renders as stacked cards below `md`, as a full table at `md+` — same column config, two render paths |
+| Date pickers | **react-day-picker** | Headless calendar logic; styled with Tailwind, matches the rest of the admin panel |
+| Rich text editing | **Tiptap** | Headless ProseMirror-based editor; all toolbar and editor UI styled with Tailwind; used for journal rich-text sections (About, Aims & Scope, Peer Review Process, Guidelines, Ethics, Policies, FAQs, Why Publish With Us) |
+| Icons | **lucide-react** | Consistent icon set, tree-shakeable, no extra font/CSS to reconcile |
+| Class name composition | **class-variance-authority + tailwind-merge (`cn`)** | Type-safe variant props on components (`<Button variant="outline" size="sm">`) without a runtime style engine |
+| Dark / light theme switching | `.dark` class on `<html>` + Tailwind `@theme` tokens | Same mechanism as `frontend/web` — one theming approach across both apps |
 
-### Why not Tailwind alone?
+### Why not a pre-styled library (Ant Design, Mantine, etc.)?
 
-Building data-heavy admin components (sortable paginated tables, file upload with progress, rich date pickers, nested drawers) from scratch with Tailwind alone would take weeks. Ant Design gives them production-ready and accessible on day one.
+Pre-styled libraries ship their own CSS variable system and component visual language, which then has to be reconciled with Tailwind (layer ordering, token syncing, overriding built-in styles to match brand colours). That reconciliation is itself ongoing maintenance cost. Building on unstyled Radix primitives means there is exactly **one** styling system — Tailwind — and zero conflicts to manage. It also keeps the admin panel visually and technically consistent with `frontend/web`, which already uses Tailwind-only.
 
-### Why not Ant Design alone?
+### Why not build everything from scratch (no primitives at all)?
 
-Ant Design's grid system (`Row`/`Col`) handles basic breakpoints but gives coarse control. Tailwind makes complex responsive layouts — stacked sidebar on mobile, horizontal on desktop; hidden/visible panels at breakpoints; responsive form grids — fast and precise.
+Accessible behaviour for overlays (dialogs, dropdowns, popovers, comboboxes) — focus trapping, roving tabindex, `Esc` to close, portal rendering, scroll locking — is easy to get subtly wrong. Radix solves exactly that layer and nothing else: it renders no DOM styling, so every visual decision still belongs to Tailwind. Same logic for data tables (TanStack Table) and date pickers (`react-day-picker`): headless logic, our own markup.
 
-### Conflict resolution
+### Component ownership model
 
-Tailwind's preflight (CSS reset) and Ant Design styles conflict by default — the reset strips component padding, borders, and typography. The fix is two steps:
-
-**Step 1 — declare CSS layer order** in `src/styles/global.css`:
-
-```css
-/* Layer order: AntD overrides reset; Tailwind utilities override AntD */
-@layer theme, base, antd, components, utilities;
-```
-
-**Step 2 — wrap the app root** with Ant Design's `StyleProvider` to place AntD into the `antd` layer:
-
-```tsx
-// src/app/App.tsx
-import { StyleProvider } from '@ant-design/cssinjs';
-
-<StyleProvider layer>
-  <ConfigProvider theme={antdTheme}>
-    <RouterProvider router={router} />
-  </ConfigProvider>
-</StyleProvider>
-```
-
-This is the exact approach used by Ant Design Pro v6 with Tailwind v4.
-
-### Token sync — one colour palette for both
-
-Ant Design v6 exposes its active theme tokens as CSS variables. Reference them in Tailwind's `@theme` block so Tailwind colour utilities (`text-primary`, `bg-error`) always match the AntD theme — including when dark mode switches:
-
-```css
-/* src/styles/global.css */
-@theme {
-  --color-primary:    var(--ant-color-primary);
-  --color-success:    var(--ant-color-success);
-  --color-warning:    var(--ant-color-warning);
-  --color-error:      var(--ant-color-error);
-  --color-bg-base:    var(--ant-color-bg-base);
-  --color-text-base:  var(--ant-color-text);
-}
-```
+`src/components/ui/` holds small, local, fully-owned components (`button.tsx`, `card.tsx`, `dialog.tsx`, `select.tsx`, `data-table.tsx`, …), each a thin Tailwind-styled wrapper around a Radix primitive (or plain HTML for simple cases like `Button`/`Card`). These are **not** an installed package — there is no version to bump, no upstream breaking change to absorb. Extending or restyling a component means editing the file directly.
 
 ### Responsive breakpoints
 
-Tailwind v4 breakpoints used across the admin panel (aligns with Ant Design's breakpoint names):
+Tailwind v4 breakpoints used across the admin panel:
 
-| Tailwind prefix | Min width | Matches AntD | Usage in admin |
-|---|---|---|---|
-| *(default)* | 0px | `xs` | Mobile: single column, sidebar hidden |
-| `sm:` | 640px | `sm` | Large phone: sidebar as bottom drawer |
-| `md:` | 768px | `md` | Tablet: sidebar collapses to icon-only |
-| `lg:` | 1024px | `lg` | Laptop: sidebar fully visible |
-| `xl:` | 1280px | `xl` | Desktop: wider content area |
+| Tailwind prefix | Min width | Usage in admin |
+|---|---|---|
+| *(default)* | 0px | Mobile: single column, sidebar hidden behind a drawer |
+| `sm:` | 640px | Large phone: sidebar as full-height overlay drawer |
+| `md:` | 768px | Tablet: sidebar visible, collapses to icon-only |
+| `lg:` | 1024px | Laptop: sidebar fully expanded by default |
+| `xl:` | 1280px | Desktop: wider content area |
 
 ---
 
@@ -127,15 +93,26 @@ frontend/admin/
     │                                      #   reviewer forms, manuscript templates
     │
     ├── components/
+    │   ├── ui/                             # Owned, Tailwind-styled primitives (shadcn/ui pattern)
+    │   │   ├── button.tsx                 # cva variants: default | outline | ghost | destructive
+    │   │   ├── card.tsx
+    │   │   ├── dialog.tsx                 # Wraps @radix-ui/react-dialog
+    │   │   ├── dropdown-menu.tsx          # Wraps @radix-ui/react-dropdown-menu
+    │   │   ├── select.tsx                 # Wraps @radix-ui/react-select
+    │   │   ├── tabs.tsx                   # Wraps @radix-ui/react-tabs
+    │   │   ├── toast.tsx                  # Wraps @radix-ui/react-toast
+    │   │   ├── tooltip.tsx                # Wraps @radix-ui/react-tooltip
+    │   │   ├── date-picker.tsx            # Wraps react-day-picker + Popover
+    │   │   └── data-table.tsx             # Wraps @tanstack/react-table (sort/paginate/filter)
     │   ├── layout/
-    │   │   ├── AdminLayout.tsx            # Shell: collapsible sidebar, top bar, breadcrumb
-    │   │   ├── Sidebar.tsx                # Ant Design Menu with grouped nav items
-    │   │   └── TopBar.tsx                 # User dropdown, notifications badge
+    │   │   ├── AdminLayout.tsx            # Shell: collapsible sidebar, top bar
+    │   │   ├── Sidebar.tsx                # Plain nav list with grouped/collapsible sections
+    │   │   └── TopBar.tsx                 # User menu, notifications badge, theme toggle
     │   ├── common/
     │   │   ├── StatusBadge.tsx            # Coloured badge for submission statuses
-    │   │   ├── ConfirmModal.tsx           # Reusable confirm-before-action modal
-    │   │   ├── RichTextEditor.tsx         # Wrapper around Tiptap/Quill for journal sections
-    │   │   ├── FileUpload.tsx             # Ant Upload wrapper for PDFs and images
+    │   │   ├── ConfirmModal.tsx           # Reusable confirm-before-action modal (ui/dialog.tsx)
+    │   │   ├── RichTextEditor.tsx         # Tiptap wrapper for journal rich-text sections
+    │   │   ├── FileUpload.tsx             # Drag-and-drop upload with progress (own implementation)
     │   │   └── PageHeader.tsx             # Consistent page title + action buttons row
     │   ├── tables/
     │   │   ├── SubmissionsTable.tsx       # All submissions with status filter tabs
@@ -168,15 +145,15 @@ frontend/admin/
     ├── hooks/                # useSubmissions, useReviewers, useJournals, usePagination
     ├── stores/               # Zustand: authStore, notificationStore, uiStore (sidebar collapse)
     ├── types/                # Re-exports from packages/types + admin-specific UI types
-    ├── config/               # API base URL, route constants, AntD theme token overrides
-    └── styles/               # global.css — CSS layer order, @theme token sync, global resets
+    ├── config/               # API base URL, route constants
+    └── styles/               # global.css — @theme tokens, dark-mode overrides, global resets
 ```
 
 ---
 
 ## 4. Navigation & Layout
 
-The admin shell is an Ant Design `Layout` with a collapsible `Sider` (sidebar). Menu items are grouped to mirror the FastAPI module structure:
+The admin shell is a plain Tailwind flex layout: a fixed-width sidebar (`aside`) next to a `main` content column. The sidebar is our own component — a scrollable nav list with collapsible groups (local `useState` per group) — not a pre-built menu component. Items are grouped to mirror the FastAPI module structure:
 
 ```
 Dashboard
@@ -210,9 +187,9 @@ Settings
 Routes are defined via React Router v6 `createBrowserRouter`. All routes under `/` (except `/login`) are wrapped in an `AdminGuard` component that checks the admin JWT and redirects to `/login` if absent or expired.
 
 **Mobile layout behaviour:**
-- `< md` (mobile / tablet): sidebar hidden by default; opens as a full-height drawer via a hamburger button in the top bar. Ant Design `Drawer` component, triggered by Tailwind `md:hidden` toggle.
-- `md` (tablet landscape): sidebar collapses to icon-only (`collapsedWidth={56}`), Ant Design `Sider` `breakpoint="md"` handles this automatically.
-- `≥ lg` (laptop+): full sidebar always visible.
+- `< md` (mobile / tablet): sidebar hidden by default; a hamburger button in the top bar opens it as a full-height overlay (fixed-position `aside` + backdrop, `md:hidden`), closed via backdrop click or an `X` button.
+- `md` (tablet landscape+): sidebar is always rendered; a collapse toggle at its base shrinks it to icon-only width (`md:w-14` vs `md:w-56`), persisted in `uiStore`.
+- `≥ lg` (laptop+): full sidebar expanded by default.
 
 ---
 
@@ -238,7 +215,7 @@ Nginx enforces `admin.imperialpress.com` only serves on HTTPS and blocks all una
 SubmissionsPage
   ├── Tabs: All | Submitted | Under Review | Revision Requested | Accepted | Payment Pending | Published | Rejected
   ├── SubmissionsTable (with filters: journal, date range, editor assigned)
-  └── SubmissionDetailDrawer (Ant Design Drawer, slides in from right)
+  └── SubmissionDetailDrawer (own component: fixed-position panel + Radix Dialog for focus trapping, slides in from right)
        ├── Submission metadata (title, journal, author, dates)
        ├── File downloads (manuscript, supplementary)
        ├── Reviewer assignment section (search + assign)
@@ -246,9 +223,18 @@ SubmissionsPage
        └── Editorial decision form
 ```
 
+### Data Tables — Mobile Responsive Pattern
+
+All data tables use `components/ui/data-table.tsx` (TanStack Table). The same column definitions drive two render paths selected by a CSS breakpoint:
+
+- **Below `md` (mobile):** each row renders as a stacked card — label above value, status badge prominent, primary action button full-width at the bottom of the card.
+- **`md` and above (tablet/desktop):** standard `<table>` with sortable column headers, paginated footer, and row-level action menus.
+
+No separate mobile component is needed — a single `DataTable` component switches render mode based on a `useMediaQuery('(min-width: 768px)')` hook.
+
 ### Journal Edit (rich content)
 
-The journal edit page handles many rich-text sections (About, Aims & Scope, Peer Review Process, Guidelines, Ethics, Policies, FAQs, Why Publish With Us). Each section is a separate tab inside `JournalForm` to keep the page manageable. The `RichTextEditor` component wraps a single editor instance; tab switching swaps the content buffer.
+The journal edit page handles many rich-text sections (About, Aims & Scope, Peer Review Process, Guidelines, Ethics, Policies, FAQs, Why Publish With Us). Each section is a separate tab inside `JournalForm` to keep the page manageable. `RichTextEditor.tsx` wraps **Tiptap** (headless ProseMirror editor); the toolbar and editor chrome are styled entirely with Tailwind. Tab switching swaps the Tiptap editor's content buffer — one editor instance, multiple content fields.
 
 ### Service Page Builder
 
@@ -283,12 +269,13 @@ All forms use **React Hook Form** + **Zod** resolvers:
 
 **Styling rules:**
 - Use Tailwind utilities for all layout, spacing, and responsiveness — `flex`, `grid`, `gap-4`, `md:flex-row`, `hidden lg:block`.
-- Use Ant Design components for all interactive UI — never build a custom table, modal, or form from scratch.
-- Never hardcode hex colour values. Colours come from Ant Design tokens (`config/antd-theme.ts`) and are available as Tailwind utilities via the `@theme` sync in `global.css`.
-- Do not mix Ant Design `Row`/`Col` grid with Tailwind grid in the same layout — pick one per component. Tailwind is preferred for new layouts.
+- For interactive UI needing accessible overlay behaviour (modal, dropdown, popover, select, tabs, toast, tooltip), use the wrapper in `components/ui/` — never call a Radix primitive directly from a page or feature component.
+- For plain presentational components (buttons, cards, badges), use or extend the existing `components/ui/` primitive rather than writing new Tailwind class strings inline for the same pattern.
+- Never hardcode hex colour values. Colours come from the semantic tokens in `styles/global.css` (`--color-primary`, `--color-error`, …), exposed as Tailwind utilities (`bg-primary`, `text-error`) and automatically re-themed by the `.dark` class.
+- Compose conditional class names with the shared `cn()` helper (`lib/utils/cn.ts`, clsx + tailwind-merge) — never string-concatenate `className`.
 
 **Data & interaction rules:**
-- All data tables are paginated server-side; the table component passes `page` and `pageSize` params to the API query.
-- Destructive actions (delete, revoke, reject) always require an Ant Design `Popconfirm` or `ConfirmModal` — no single-click destructive operations.
+- All data tables use `components/ui/data-table.tsx` (TanStack Table) and are paginated server-side; the table component passes `page` and `pageSize` params to the API query.
+- Destructive actions (delete, revoke, reject) always require confirmation via `ConfirmModal` (built on `components/ui/dialog.tsx`) — no single-click destructive operations.
 - Rich text editor HTML is sanitised server-side by FastAPI using `bleach` before being stored — the admin panel trusts its own users but the API is the last line of sanitisation.
 - All API calls go through typed wrappers in `lib/api/` — no raw fetch/axios calls in components or pages.
