@@ -16,6 +16,7 @@ Next.js 16.2 LTS · React 19.2 · TypeScript 6.0 · Tailwind CSS 4.3 · App Rout
 
 ## Core Rules
 
+- **All config from root `.env`** — never hardcode API URLs, MeiliSearch hosts/keys, or other environment-specific values; read them through `src/config/` (loaded from the monorepo root); no per-app `.env` files
 - **Server Components by default** — add `"use client"` only when using hooks, browser APIs, or event handlers
 - **Rendering strategy is per-route** — choose SSG / ISR / SSR / CSR from the table in `state-and-data.md`; do not SSR a page that could be SSG
 - **All API calls through `lib/api/`** — no raw `fetch` calls scattered in components or pages

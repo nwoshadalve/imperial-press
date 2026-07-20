@@ -80,7 +80,9 @@ async def publish_paper(session: AsyncSession, paper_id: uuid.UUID) -> PaperPubl
 
 ## Config
 
-All configuration in `app/core/config.py` via `pydantic-settings`. Never hardcode URLs, secrets, or environment-specific values in application code.
+All configuration comes from the **repo-root** `.env` (with `.env.example` as the committed template). Load it only through `app/core/config.py` via `pydantic-settings`. Never hardcode URLs, secrets, ports, feature flags, or other environment-specific values in application code — and never put defaults for those values on the `Settings` class. Do not add `backend/.env` or other per-app env files.
+
+`Settings` resolves the monorepo root and loads `.env.example` then `.env` when those files exist; in Docker it relies on process environment injected by Compose.
 
 ```python
 from app.core.config import settings
@@ -88,9 +90,11 @@ from app.core.config import settings
 # Good
 url = settings.garage_endpoint
 
-# Bad
+# Bad — hardcoded, bypasses .env
 url = "http://localhost:3900"
 ```
+
+Copy root `.env.example` → `.env` for local development. Tests read `TEST_DATABASE_URL` from the environment (falling back to `DATABASE_URL`).
 
 ## Logging
 

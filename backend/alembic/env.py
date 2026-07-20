@@ -11,15 +11,7 @@ from app.core.config import settings
 from app.core.database import Base
 
 # Import all models so that Base.metadata is populated before autogenerate runs.
-import app.modules.users.models  # noqa: F401
-import app.modules.journals.models  # noqa: F401
-import app.modules.papers.models  # noqa: F401
-import app.modules.submissions.models  # noqa: F401
-import app.modules.reviews.models  # noqa: F401
-import app.modules.payments.models  # noqa: F401
-import app.modules.certificates.models  # noqa: F401
-import app.modules.content.models  # noqa: F401
-import app.modules.notifications.models  # noqa: F401
+import app.models  # noqa: F401
 
 logger = logging.getLogger("alembic.env")
 

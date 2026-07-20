@@ -1,16 +1,20 @@
 from __future__ import annotations
 
+import os
+
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from app.core.config import settings
 from app.core.database import Base, get_db
 from app.core.security import hash_password
 from app.main import app
+import app.models  # noqa: F401
 from app.modules.users.models import User
 
-TEST_DB_URL = "postgresql+asyncpg://test:test@localhost:5432/imperial_test"
+TEST_DB_URL = os.environ.get("TEST_DATABASE_URL", settings.database_url)
 
 
 @pytest_asyncio.fixture(scope="session")

@@ -1,0 +1,41 @@
+# Dev / local full-stack — HTTP only (no TLS). Single domain, path-based frontends.
+# API is published on HOST_API_PORT (not proxied here).
+
+server {
+    listen 80 default_server;
+    server_name ${DOMAIN} www.${DOMAIN} localhost _;
+
+    location /assets/ {
+        proxy_pass         http://storage:3902/;
+        proxy_set_header   Host public-assets.web.garage;
+        proxy_hide_header  x-amz-id-2;
+        proxy_hide_header  x-amz-request-id;
+        add_header         Cache-Control "public, max-age=604800, immutable";
+        expires            7d;
+    }
+
+    # Admin SPA (Vite base = ADMIN_BASE_PATH). Strip prefix for the admin container.
+    location = ${ADMIN_BASE_PATH} {
+        return 301 ${ADMIN_BASE_PATH}/;
+    }
+
+    location ${ADMIN_BASE_PATH}/ {
+        proxy_pass       http://admin:3001/;
+        proxy_set_header Host $$host;
+        proxy_set_header X-Real-IP $$remote_addr;
+        proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $$scheme;
+    }
+
+    location / {
+        proxy_pass         http://web:3000;
+        proxy_http_version 1.1;
+        proxy_set_header   Upgrade $$http_upgrade;
+        proxy_set_header   Connection 'upgrade';
+        proxy_set_header   Host $$host;
+        proxy_set_header   X-Real-IP $$remote_addr;
+        proxy_set_header   X-Forwarded-For $$proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $$scheme;
+        proxy_cache_bypass $$http_upgrade;
+    }
+}

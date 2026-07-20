@@ -3,9 +3,9 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "dev": "next dev --port 50173",
-    "build": "next build",
-    "start": "next start --port 50173",
+    "dev": "node ./scripts/next-with-root-env.mjs dev",
+    "build": "node ./scripts/next-with-root-env.mjs build",
+    "start": "node ./scripts/next-with-root-env.mjs start",
     "typecheck": "tsc --noEmit",
     "lint": "next lint"
   },

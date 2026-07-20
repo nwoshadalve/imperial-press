@@ -2,7 +2,7 @@
 
 **Tech:** Python 3.14.6 · FastAPI 0.139 · SQLAlchemy 2.0 · Alembic · PostgreSQL 18 · MeiliSearch 1.48 · uv 0.11  
 **Serves:** Both frontends (public website + admin panel)  
-**URL:** `api.imperialpress.com` (Nginx → port 8000)
+**URL:** `http://$DOMAIN:$HOST_API_PORT` (published host port; local: `http://localhost:8000`)
 
 ---
 
@@ -37,6 +37,7 @@ backend/
 │   │   ├── config.py      # Settings via pydantic-settings (reads .env)
 │   │   ├── database.py    # SQLAlchemy async engine, session factory, Base
 │   │   ├── security.py    # JWT encode/decode, bcrypt hashing, password validation
+│   │   ├── seed.py        # Idempotent default-admin bootstrap on startup
 │   │   ├── dependencies.py # FastAPI Depends: get_db, get_current_user, require_role
 │   │   └── exceptions.py  # Custom HTTPException subclasses (NotFound, Forbidden, etc.)
 │   │
@@ -158,9 +159,10 @@ backend/
 │       └── pagination.py         # Shared paginated response helper
 │
 ├── tests/                        # pytest test suite
-├── scripts/                      # seed_db.py, create_admin.py
 └── pyproject.toml                # uv project file: dependencies, requires-python = ">=3.14"
 ```
+
+Default admin bootstrap: `app/core/seed.py` (also `uv run python -m app.core.seed`). Credentials: [docs/default-admin-credentials.md](../default-admin-credentials.md).
 
 ---
 
@@ -205,6 +207,7 @@ Every protected endpoint:
 - A single user can hold multiple roles simultaneously (`["author", "reviewer"]`).
 - Admin accounts are a separate user record with `role: admin`; they use a separate login endpoint that enforces the `admin` role claim.
 - Passwords hashed with **bcrypt** (cost factor 12). Minimum strength enforced via `zxcvbn` score ≥ 2.
+- On startup the API seeds a default admin from `DEFAULT_ADMIN_*` env vars when that email is not yet registered (see [default-admin-credentials.md](../default-admin-credentials.md)).
 
 ---
 
@@ -335,8 +338,8 @@ Email is always **fire-and-forget inside a FastAPI `BackgroundTask`** — the HT
 - Responses always return Pydantic schemas — ORM objects never returned directly
 - Paginated list endpoints return `{ items: [...], total: int, page: int, page_size: int }`
 - Errors follow RFC 7807 Problem Details: `{ detail: string, type: string, field_errors: [...] }`
-- Swagger UI auto-generated at `api.imperialpress.com/docs` (disabled in production by default; enable via env flag for internal use)
-- CORS allows `imperialpress.com` and `admin.imperialpress.com` only; no wildcard origin
+- Swagger UI auto-generated at `http://localhost:8000/docs` locally / `http://$DOMAIN:$HOST_API_PORT/docs` in production (disabled in production by default; enable via env flag for internal use)
+- CORS allows the public site origin only in production (admin shares the same origin via `/admin`); local hybrid allows `localhost` web + admin ports. Configured via `ALLOWED_ORIGINS`; no wildcard origin
 
 ---
 

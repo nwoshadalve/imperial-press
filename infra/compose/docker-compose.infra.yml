@@ -1,0 +1,21 @@
+# Local hybrid overlay — publish backing-service ports to the host.
+# Apps (web / admin / api) run on the host, not in Docker.
+#
+#   ./scripts/compose.sh infra up -d
+
+services:
+
+  db:
+    ports:
+      - "${HOST_POSTGRES_PORT}:5432"
+
+  search:
+    ports:
+      - "${HOST_MEILI_PORT}:7700"
+    environment:
+      MEILI_ENV: development
+
+  storage:
+    ports:
+      - "${HOST_GARAGE_S3_PORT}:3900"
+      - "${HOST_GARAGE_ADMIN_PORT}:3903"

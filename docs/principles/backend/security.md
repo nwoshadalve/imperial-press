@@ -140,15 +140,15 @@ async def login(request: Request, body: LoginRequest, session: AsyncSession = De
 
 ## Secrets
 
-- All secrets (JWT secret key, Garage credentials, SMTP credentials, MeiliSearch master key) are loaded from environment variables via `pydantic-settings` in `core/config.py`
-- Never commit secrets to source control
+- All secrets (JWT secret key, Garage credentials, SMTP credentials, MeiliSearch master key) and all other config are loaded from the repo-root `.env` via `pydantic-settings` in `core/config.py` — never hardcoded in source
+- Never commit secrets to source control (commit root `.env.example` only; keep `.env` gitignored)
 - Never log JWT tokens, passwords, or API keys — scrub them from log messages before writing
 
 ---
 
 ## CORS
 
-Only `imperialpress.com` and `admin.imperialpress.com` are allowed origins. Configured once in `main.py`. Never use `allow_origins=["*"]`.
+Only the public site origin is allowed in production (admin is same-origin under `/admin`). Local hybrid lists `http://localhost:50173` and `http://localhost:50174`. Configured once in `main.py` via `ALLOWED_ORIGINS`. Never use `allow_origins=["*"]`.
 
 ---
 

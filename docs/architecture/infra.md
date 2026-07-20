@@ -11,16 +11,24 @@
 ```
 Internet
     │
-    ▼ port 80 / 443
+    ├─► port 80 / 443  (Nginx — single domain)
+    │     /          → web   (port 3000)
+    │     /admin/    → admin (port 3001)
+    │     /assets/   → storage (Garage public, port 3902)
+    │
+    └─► port HOST_API_PORT (default 8000) → api (FastAPI)
+```
+
+```
 ┌───────────────────────────────────────────────────────────────────┐
 │  Nginx (reverse proxy + SSL)                                      │
 │  Let's Encrypt via Certbot                                        │
 │                                                                   │
-│  imperialpress.com ──────────────────► web     (port 3000)       │
-│  imperialpress.com/assets/ ──────────► storage (port 3902)       │
-│  admin.imperialpress.com ────────────► admin   (port 3001)       │
-│  api.imperialpress.com ──────────────► api     (port 8000)       │
+│  $DOMAIN/ ───────────────────────────► web     (port 3000)       │
+│  $DOMAIN/admin/ ─────────────────────► admin   (port 3001)       │
+│  $DOMAIN/assets/ ────────────────────► storage (port 3902)       │
 └───────────────────────────────────────────────────────────────────┘
+         API published separately on HOST_API_PORT → api :8000
                                 │
               ┌─────────────────┼─────────────────┐
               ▼                 ▼                  ▼
@@ -32,7 +40,7 @@ Internet
                                               payment-proofs
 ```
 
-All services run in Docker containers on one VM. PostgreSQL and MeiliSearch are **never exposed to the public internet** — only Nginx and the three app containers communicate with them, via an internal Docker network.
+All services run in Docker containers on one VM. PostgreSQL and MeiliSearch are **never exposed to the public internet** — only Nginx, the published API port, and the app containers communicate with them, via an internal Docker network.
 
 ---
 
@@ -53,10 +61,11 @@ infra/
 │   └── api/
 │       └── Dockerfile              # FastAPI (context: backend/)
 ├── nginx/
-│   └── conf.d/
-│       ├── imperialpress.conf      # Public site (imperialpress.com)
-│       ├── admin.conf              # Admin panel (admin.imperialpress.com)
-│       └── api.conf                # API (api.imperialpress.com)
+│   ├── nginx.conf
+│   ├── templates-dev/          # HTTP-only single-domain templates
+│   │   └── default.conf.template
+│   └── templates-prod/         # TLS single-domain templates
+│       └── web.conf.template   # / → web, /admin/ → admin, /assets/ → Garage
 ├── postgres/
 │   └── init/
 │       └── 01_extensions.sql       # Enable uuid-ossp, pg_trgm on first boot
@@ -219,7 +228,7 @@ services:
     image: imperial-press/web:latest
     networks: [internal]
     environment:
-      - API_BASE_URL=https://api.imperialpress.com
+      - NEXT_PUBLIC_API_BASE_URL=http://imperialpress.com:8000
       - NEXT_REVALIDATE_SECRET=${NEXT_REVALIDATE_SECRET}
     depends_on: [api]
 
@@ -267,7 +276,7 @@ services:
       - POSTGRES_PASSWORD=${DB_PASSWORD}
       - POSTGRES_DB=imperial_press
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql
       - ../../infra/postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U imperial -d imperial_press"]
@@ -373,14 +382,17 @@ services:
 
   db:
     ports:
-      - "5432:5432"            # Expose locally so you can connect via DBeaver / psql
+      # Host port from .env.compose (default 5433). Container stays on 5432.
+      - "${HOST_POSTGRES_PORT}:5432"
 
   search:
     ports:
-      - "7700:7700"            # Expose locally so you can use MeiliSearch dashboard
+      - "${HOST_MEILI_PORT}:7700"
     environment:
       - MEILI_ENV=development  # Enables the MeiliSearch web UI at localhost:7700
 ```
+
+Local hybrid defaults publish Postgres on **5433** so a system Postgres on **5432** can keep running. Apps on the host must use that host port in `DATABASE_URL` / `TEST_DATABASE_URL`.
 
 ---
 
@@ -468,40 +480,59 @@ SMTP_PASSWORD=
 
 ## 5. Nginx
 
-### 5.1 `infra/nginx/conf.d/imperialpress.conf` — Public site
+Single domain, path-based frontends. Templates live under `infra/nginx/templates-prod/` (TLS) and `templates-dev/` (HTTP). The API is **not** proxied here — it is published on `HOST_API_PORT`.
+
+### 5.1 `infra/nginx/templates-prod/web.conf.template`
 
 ```nginx
-# Redirect HTTP → HTTPS
+# Redirect HTTP → HTTPS (+ ACME challenge)
 server {
     listen 80;
-    server_name imperialpress.com www.imperialpress.com;
+    server_name ${DOMAIN} www.${DOMAIN};
 
     location /.well-known/acme-challenge/ {
         root /var/www/certbot;
     }
 
     location / {
-        return 301 https://imperialpress.com$request_uri;
+        return 301 https://${DOMAIN}$request_uri;
     }
 }
 
 server {
-    listen 443 ssl http2;
-    server_name imperialpress.com www.imperialpress.com;
+    listen 443 ssl;
+    http2 on;
+    server_name ${DOMAIN} www.${DOMAIN};
 
-    ssl_certificate     /etc/letsencrypt/live/imperialpress.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/imperialpress.com/privkey.pem;
+    ssl_certificate     /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
     ssl_protocols       TLSv1.2 TLSv1.3;
     ssl_ciphers         HIGH:!aNULL:!MD5;
 
-    # Security headers
-    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
+    add_header Strict-Transport-Security "max-age=63072000; preload" always;
     add_header X-Frame-Options DENY always;
     add_header X-Content-Type-Options nosniff always;
     add_header Referrer-Policy strict-origin-when-cross-origin always;
-    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:;" always;
 
-    # Proxy to Next.js
+    location /assets/ {
+        proxy_pass         http://storage:3902/;
+        proxy_set_header   Host public-assets.web.garage;
+        add_header         Cache-Control "public, max-age=604800, immutable";
+        expires            7d;
+    }
+
+    location = ${ADMIN_BASE_PATH} {
+        return 301 ${ADMIN_BASE_PATH}/;
+    }
+
+    location ${ADMIN_BASE_PATH}/ {
+        proxy_pass       http://admin:3001/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
     location / {
         proxy_pass         http://web:3000;
         proxy_http_version 1.1;
@@ -514,114 +545,20 @@ server {
         proxy_cache_bypass $http_upgrade;
     }
 
-    # ISR revalidation endpoint — internal only
     location /api/revalidate {
-        allow 172.16.0.0/12;   # Docker internal network
+        allow 172.16.0.0/12;
         deny  all;
         proxy_pass http://web:3000;
     }
 }
 ```
 
----
-
-### 5.2 `infra/nginx/conf.d/admin.conf` — Admin panel
-
-```nginx
-server {
-    listen 80;
-    server_name admin.imperialpress.com;
-
-    location /.well-known/acme-challenge/ {
-        root /var/www/certbot;
-    }
-
-    location / {
-        return 301 https://admin.imperialpress.com$request_uri;
-    }
-}
-
-server {
-    listen 443 ssl http2;
-    server_name admin.imperialpress.com;
-
-    ssl_certificate     /etc/letsencrypt/live/imperialpress.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/imperialpress.com/privkey.pem;
-    ssl_protocols       TLSv1.2 TLSv1.3;
-    ssl_ciphers         HIGH:!aNULL:!MD5;
-
-    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" always;
-    add_header X-Frame-Options DENY always;
-    add_header X-Content-Type-Options nosniff always;
-
-    location / {
-        proxy_pass       http://admin:3001;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-```
-
----
-
-### 5.3 `infra/nginx/conf.d/api.conf` — FastAPI
-
-```nginx
-server {
-    listen 80;
-    server_name api.imperialpress.com;
-
-    location /.well-known/acme-challenge/ {
-        root /var/www/certbot;
-    }
-
-    location / {
-        return 301 https://api.imperialpress.com$request_uri;
-    }
-}
-
-server {
-    listen 443 ssl http2;
-    server_name api.imperialpress.com;
-
-    ssl_certificate     /etc/letsencrypt/live/imperialpress.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/imperialpress.com/privkey.pem;
-    ssl_protocols       TLSv1.2 TLSv1.3;
-    ssl_ciphers         HIGH:!aNULL:!MD5;
-
-    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" always;
-    add_header X-Content-Type-Options nosniff always;
-
-    # File upload size limit (manuscript uploads up to 20MB + overhead)
-    client_max_body_size 25M;
-
-    # Rate limiting — brute-force protection for login
-    limit_req_zone $binary_remote_addr zone=login:10m rate=10r/m;
-
-    location /api/v1/auth/login {
-        limit_req zone=login burst=5 nodelay;
-        proxy_pass http://api:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    location / {
-        proxy_pass         http://api:8000;
-        proxy_http_version 1.1;
-        proxy_set_header   Host $host;
-        proxy_set_header   X-Real-IP $remote_addr;
-        proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header   X-Forwarded-Proto $scheme;
-
-        # Swagger UI — disable in production if not needed
-        # location /docs { deny all; }
-    }
-}
-```
+| Path | Upstream |
+|---|---|
+| `/` | `web:3000` (Next.js) |
+| `/admin/` | `admin:3001` (Vite SPA; prefix stripped) |
+| `/assets/` | Garage public bucket |
+| API | Host port `HOST_API_PORT` → `api:8000` (Compose publish, not Nginx) |
 
 ---
 
@@ -768,7 +705,6 @@ cp .env.example .env
 docker compose -f infra/compose/docker-compose.yml run --rm certbot \
   certonly --webroot -w /var/www/certbot \
   -d imperialpress.com -d www.imperialpress.com \
-  -d admin.imperialpress.com -d api.imperialpress.com \
   --email admin@imperialpress.com --agree-tos --no-eff-email
 
 # 5. Build and start all services

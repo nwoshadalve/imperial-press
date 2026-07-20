@@ -69,9 +69,29 @@ import type { SubmissionListItem } from './types';
 
 ## Environment Variables
 
-- Server-side secrets: `NEXT_REVALIDATE_SECRET`, `MEILISEARCH_MASTER_KEY` — never exposed to browser
-- Public browser vars: `NEXT_PUBLIC_API_BASE_URL`, `NEXT_PUBLIC_MEILISEARCH_HOST`, `NEXT_PUBLIC_MEILISEARCH_SEARCH_KEY` — safe to expose; search key is read-only and scoped
-- Never expose `MEILISEARCH_MASTER_KEY` as a `NEXT_PUBLIC_*` variable
+All configuration comes from the **repo-root** `.env` — never hardcode URLs, secrets, or environment-specific values in source, never use inline `?? 'http://localhost:…'` fallbacks, and never add per-app `.env` files under `frontend-web/`.
+
+| Kind | Variables | Notes |
+|---|---|---|
+| Public (browser) | `NEXT_PUBLIC_API_BASE_URL`, `NEXT_PUBLIC_MEILISEARCH_HOST`, `NEXT_PUBLIC_MEILISEARCH_SEARCH_KEY` | Safe to expose; search key is read-only and scoped |
+| Server-only | `NEXT_REVALIDATE_SECRET` | Never prefix with `NEXT_PUBLIC_` |
+| Local port | `WEB_PORT` | Mapped to `PORT` in `next.config.ts` |
+| Never in browser | `MEILISEARCH_MASTER_KEY` (backend only) | Must not appear as `NEXT_PUBLIC_*` |
+
+- Read app config only via `src/config/` — do not scatter `process.env.*` through pages/components
+- `next.config.ts` loads env from the monorepo root via `loadEnvConfig(..., forceReload: true)` and exposes `NEXT_PUBLIC_*` through `env` (Next may otherwise cache an empty load from `frontend-web/` which has no local `.env`)
+- `npm run dev` / `start` go through `scripts/next-with-root-env.mjs` so `WEB_PORT` is applied before Next binds
+- Onboard by copying root `.env.example` → `.env`
+- Missing required vars must fail loudly at startup/import — do not silently fall back to localhost
+
+```ts
+// Good
+import { config } from '@/config'
+fetch(`${config.apiBaseUrl}/api/v1/journals/${slug}`)
+
+// Bad
+fetch(`${process.env.API_URL ?? 'http://localhost:8000'}/api/v1/journals/${slug}`)
+```
 
 ## Code Style
 
@@ -87,6 +107,7 @@ import type { SubmissionListItem } from './types';
 - Do not use `// @ts-ignore`
 - Do not call `fetch` or `axios` directly in components — use `lib/api/` wrappers
 - Do not hardcode hex colour values — use design tokens from `styles/globals.css`
+- Do not hardcode URLs, secrets, or other config — use the repo-root `.env` via `src/config/`
 - Do not commit commented-out code
 - Do not use `<img>` — always use `next/image`
 - Do not store the access token in `localStorage` or any JS-accessible cookie — Zustand memory only

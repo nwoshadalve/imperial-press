@@ -1,0 +1,63 @@
+# Production / full-Docker overlay — restart policies, resource limits, TLS Nginx.
+# Starts with profile `full` (web, admin, api, nginx) via scripts/compose.* prod.
+#
+#   ./scripts/compose.sh prod up -d --build
+
+services:
+
+  web:
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+
+  admin:
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+
+  api:
+    restart: unless-stopped
+    # API is port-based (not path-proxied on the site domain)
+    ports:
+      - "${HOST_API_PORT}:8000"
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1G
+
+  db:
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+  search:
+    restart: unless-stopped
+    environment:
+      MEILI_ENV: production
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  storage:
+    restart: unless-stopped
+
+  nginx:
+    restart: unless-stopped
+    ports:
+      - "${HOST_HTTP_PORT}:80"
+      - "${HOST_HTTPS_PORT}:443"
+    volumes:
+      - ../nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ../nginx/templates-prod:/etc/nginx/templates:ro
+      - certbot-certs:/etc/letsencrypt:ro
+      - certbot-www:/var/www/certbot:ro

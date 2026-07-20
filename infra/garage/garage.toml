@@ -1,0 +1,24 @@
+metadata_dir = "/var/lib/garage/meta"
+data_dir     = "/var/lib/garage/data"
+
+db_engine = "sqlite"
+replication_factor = 1
+
+# Generate a unique value with: openssl rand -hex 32
+# Keep the same secret across restarts for a given volume.
+rpc_secret = "a1b2c3d4e5f60718293a4b5c6d7e8f90123456789abcdef0123456789abcdef0"
+rpc_bind_addr = "0.0.0.0:3901"
+rpc_public_addr = "storage:3901"
+
+[s3_api]
+s3_region     = "garage"
+api_bind_addr = "0.0.0.0:3900"
+root_domain   = ".storage.imperialpress.com"
+
+[s3_web]
+bind_addr   = "0.0.0.0:3902"
+root_domain = ".web.garage"
+index       = "index.html"
+
+[admin]
+api_bind_addr = "0.0.0.0:3903"

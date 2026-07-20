@@ -103,13 +103,13 @@ All services run on one VM (Contabo or Hostinger) managed by Docker Compose:
 
 ### 3.2 Domain Routing via Nginx
 
-Nginx handles SSL termination (Let's Encrypt / Certbot) and routes by subdomain:
+Nginx handles SSL termination (Let's Encrypt / Certbot) on a **single domain** and routes by path. The API is published on its own host port (not a subdomain):
 
-| Subdomain | Routes to | Audience |
+| URL | Routes to | Audience |
 |---|---|---|
-| `imperialpress.com` | Next.js — port 3000 | Public readers, authors, reviewers |
-| `admin.imperialpress.com` | React + Vite — port 3001 | Admin staff only |
-| `api.imperialpress.com` | FastAPI — port 8000 | Called by both frontends |
+| `imperialpress.com/` | Next.js — port 3000 | Public readers, authors, reviewers |
+| `imperialpress.com/admin/` | React + Vite — port 3001 | Admin staff only |
+| `imperialpress.com:8000` | FastAPI — port 8000 | Called by both frontends |
 
 PostgreSQL and MeiliSearch are not exposed to the public internet.
 
@@ -159,7 +159,7 @@ Public / Author / Reviewer          Admin Staff
 - MeiliSearch index updates on content publish/update
 - Certificate PDF generation
 - Email dispatch (all system notifications)
-- API documentation at `api.imperialpress.com/docs` (Swagger UI, built-in)
+- API documentation at `http://localhost:8000/docs` (Swagger UI, built-in; production uses `$DOMAIN:$HOST_API_PORT`)
 
 ---
 
@@ -509,7 +509,7 @@ Subject
 | Author | `imperialpress.com/login` | Author dashboard |
 | Reviewer | `imperialpress.com/login` | Reviewer dashboard |
 | Author + Reviewer | `imperialpress.com/login` | Both dashboards (tabbed) |
-| Admin | `admin.imperialpress.com` | Admin panel |
+| Admin | `imperialpress.com/admin/` | Admin panel |
 
 A single account can hold both `author` and `reviewer` roles simultaneously. The JWT includes all role claims.
 
@@ -962,7 +962,7 @@ Admin can revoke a certificate (e.g. on paper retraction). The record remains in
 
 ## 15. Admin Panel
 
-Accessible at `admin.imperialpress.com`. React + Vite SPA. All data operations go through FastAPI.
+Accessible at `imperialpress.com/admin/`. React + Vite SPA. All data operations go through FastAPI.
 
 ### 15.1 Content Management
 
@@ -1120,8 +1120,8 @@ All emails are sent by FastAPI. Email infrastructure (SMTP provider) to be decid
 | SEO | SSR or SSG for all public pages; Open Graph tags, canonical URLs, JSON-LD structured data for articles |
 | Performance | Static generation for journal and paper pages; revalidation triggered by FastAPI after content updates |
 | Accessibility | WCAG 2.1 AA minimum |
-| SSL | Nginx + Let's Encrypt (Certbot) for all three subdomains |
-| API documentation | Swagger UI auto-generated at `api.imperialpress.com/docs` |
+| SSL | Nginx + Let's Encrypt (Certbot) for the single site domain (`/` and `/admin/`) |
+| API documentation | Swagger UI auto-generated at `$DOMAIN:$HOST_API_PORT/docs` |
 | File validation | Manuscript uploads validated as .docx on upload; rejected immediately if wrong format |
 | Password security | bcrypt hashing; minimum password strength enforced on registration |
 | Data integrity | PostgreSQL foreign key constraints enforce all content relationships |

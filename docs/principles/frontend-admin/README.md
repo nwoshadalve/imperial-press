@@ -14,10 +14,14 @@ Read these before writing any code in `frontend-admin/`. Each doc is short and t
 
 **Design:** Tailwind first, always. Tokens in `styles/global.css`. Never hardcode colours. Mobile-first breakpoints.
 
-**Coding:** Strict TypeScript, no `any`, functional components only. API calls through `lib/api/` — never directly in components.
+**Coding:** Strict TypeScript, no `any`, functional components only. API calls through `lib/api/` — never directly in components. All config from the repo-root `.env` via `src/config/`.
 
 **Components:** `pages/` for routed views, `components/ui/` for owned primitives, `components/common/` for shared feature components. Pages are thin — logic lives in hooks.
 
 **State & Data:** `useState` for UI, TanStack Query for server data, Zustand for global client state, React Hook Form + Zod for forms.
 
 **Regression Testing:** Static → Component → E2E. MSW shared across all layers. Golden paths only in E2E. Never test implementation details.
+
+## Core Rules
+
+- **All config from root `.env`** — never hardcode API URLs, ports, or environment-specific values; read them through `src/config/` (`envDir` = monorepo root); no per-app `.env` files

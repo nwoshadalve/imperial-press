@@ -8,11 +8,11 @@ Imperial Press is an academic publishing platform (journals, peer review, submis
 
 | App | Dir | Port | Stack |
 |---|---|---|---|
-| Admin panel | `frontend-admin/` | 50174 | React 19 + Vite 8 + Tailwind v4 + Radix UI |
-| Public website | `frontend-web/` | 50173 | Next.js 16 + React 19 + Tailwind v4 |
+| Admin panel | `frontend-admin/` | 50174 (`/admin`) | React 19 + Vite 8 + Tailwind v4 + Radix UI |
+| Public website | `frontend-web/` | 50173 (`/`) | Next.js 16 + React 19 + Tailwind v4 |
 | REST API | `backend/` | 8000 | Python 3.14 + FastAPI + SQLAlchemy 2 + Alembic |
 
-Backing services (PostgreSQL, MeiliSearch, Garage S3) run in Docker via `infra/compose/docker-compose.yml`.
+Single public domain (no subdomains): web at `/`, admin at `ADMIN_BASE_PATH` (default `/admin`), API on its own port. Backing services (PostgreSQL, MeiliSearch, Garage S3) and full-stack deploy run via Docker Compose from the repo root (`compose.yaml`, `scripts/compose.*`). Host ports live in `.env.compose`; secrets in `.env`.
 
 ---
 
@@ -22,7 +22,7 @@ Backing services (PostgreSQL, MeiliSearch, Garage S3) run in Docker via `infra/c
 
 ```bash
 cd frontend-admin
-npm run dev          # dev server → http://localhost:50174
+npm run dev          # dev server → http://localhost:50174/admin/
 npm run build        # tsc -b && vite build
 npm run typecheck    # tsc --noEmit (no emit, fastest type check)
 npm run lint         # eslint src --max-warnings 0
@@ -56,13 +56,16 @@ uv run pytest -k "test_create"       # tests matching a name pattern
 uv run pytest -x                     # stop on first failure
 ```
 
-### Backing services
+### Backing services / full stack
 
 ```bash
-cd infra/compose
-docker compose up -d    # start PostgreSQL :5432, MeiliSearch :7700, Garage :3900/:3903
-docker compose down     # stop
+# From repo root — loads .env + .env.compose
+./scripts/compose.sh infra up -d          # local hybrid: Postgres, Meili, Garage only
+./scripts/compose.sh prod up -d --build   # production: everything in Docker
+# Windows: .\scripts\compose.ps1 infra|prod …
 ```
+
+See [docs/setup.md](docs/setup.md).
 
 ---
 
@@ -145,6 +148,7 @@ The backend's `modules/search/service.py` maintains MeiliSearch indexes. Documen
 
 ## Key constraints
 
+- **All config from root `.env`** — never hardcode URLs, secrets, ports, or environment-specific values in any app; Docker host ports use `.env.compose`; no per-app `.env` files; see `docs/principles/*/README.md`
 - **Alembic only** for schema changes — never `ALTER TABLE` directly, never `Base.metadata.create_all()` in production  
 - **UUIDs** for all PKs — no sequential integer IDs on public resources  
 - **Destructive actions** (delete, revoke, reject) always require confirmation via `ConfirmModal` in the admin — no single-click destructive operations  
