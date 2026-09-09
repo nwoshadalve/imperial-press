@@ -1,27 +1,27 @@
+/**
+ * Copyright (c) 2026 Imperial Press. All rights reserved.
+ *
+ * Developed by MD Nwoshad Alam Chowdhury.
+ */
+
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useUIStore } from '@/stores/uiStore';
+import type { Theme } from '@/stores/uiStore';
 
-type Theme = 'light' | 'dark';
-
+/**
+ * Thin selector over the UI store. The store is the single source of truth for
+ * theme; the blocking head script sets the initial `.dark` class before paint
+ * and `ThemeProvider` hydrates the store from it.
+ */
 export function useTheme() {
-  const [theme, setThemeState] = useState<Theme>('light');
+  const theme = useUIStore((s) => s.theme);
+  const setTheme = useUIStore((s) => s.setTheme);
+  const toggleTheme = useUIStore((s) => s.toggleTheme);
 
-  useEffect(() => {
-    const stored = localStorage.getItem('theme') as Theme | null;
-    const preferred = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    const initial = stored ?? preferred;
-    setThemeState(initial);
-    document.documentElement.classList.toggle('dark', initial === 'dark');
-  }, []);
-
-  const setTheme = (t: Theme) => {
-    setThemeState(t);
-    localStorage.setItem('theme', t);
-    document.documentElement.classList.toggle('dark', t === 'dark');
+  return { theme, setTheme, toggleTheme } as {
+    theme: Theme;
+    setTheme: (t: Theme) => void;
+    toggleTheme: () => void;
   };
-
-  const toggleTheme = () => setTheme(theme === 'dark' ? 'light' : 'dark');
-
-  return { theme, setTheme, toggleTheme };
 }
