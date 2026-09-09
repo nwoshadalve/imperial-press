@@ -1,3 +1,9 @@
+/**
+ * Copyright (c) 2026 Imperial Press. All rights reserved.
+ *
+ * Developed by MD Nwoshad Alam Chowdhury.
+ */
+
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { HydrateFallback } from '@/components/common/HydrateFallback'
 

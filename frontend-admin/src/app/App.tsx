@@ -1,3 +1,9 @@
+/**
+ * Copyright (c) 2026 Imperial Press. All rights reserved.
+ *
+ * Developed by MD Nwoshad Alam Chowdhury.
+ */
+
 import { useEffect } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { RouterProvider } from 'react-router-dom'

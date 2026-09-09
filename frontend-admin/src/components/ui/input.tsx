@@ -1,3 +1,9 @@
+/**
+ * Copyright (c) 2026 Imperial Press. All rights reserved.
+ *
+ * Developed by MD Nwoshad Alam Chowdhury.
+ */
+
 import { forwardRef, type InputHTMLAttributes } from 'react'
 import { cn } from '@/lib/utils/cn'
 

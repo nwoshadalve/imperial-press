@@ -1,3 +1,9 @@
+/**
+ * Copyright (c) 2026 Imperial Press. All rights reserved.
+ *
+ * Developed by MD Nwoshad Alam Chowdhury.
+ */
+
 import { Bell, Menu, Moon, Sun, LogOut, User, ChevronDown, Settings } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'

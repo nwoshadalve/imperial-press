@@ -1,5 +1,19 @@
 # Coding Standards
 
+## Copyright Notice
+
+Every source file in `frontend-admin/` must begin with the following block comment (before any imports or other code):
+
+```ts
+/**
+ * Copyright (c) 2026 Imperial Press. All rights reserved.
+ *
+ * Developed by MD Nwoshad Alam Chowdhury.
+ */
+```
+
+Apply this to all `.ts` and `.tsx` files under `src/` and to root config files such as `vite.config.ts`.
+
 ## Language & Tooling
 
 - **TypeScript** everywhere — no `.js` or `.jsx` files in `src/`

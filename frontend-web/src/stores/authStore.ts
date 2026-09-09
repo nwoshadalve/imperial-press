@@ -1,3 +1,9 @@
+/**
+ * Copyright (c) 2026 Imperial Press. All rights reserved.
+ *
+ * Developed by MD Nwoshad Alam Chowdhury.
+ */
+
 import { create } from 'zustand';
 import type { User } from '@/types';
 

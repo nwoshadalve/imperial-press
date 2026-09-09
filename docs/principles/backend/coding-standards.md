@@ -1,5 +1,18 @@
 # Coding Standards — backend
 
+## Copyright Notice
+
+Every Python source file in `backend/` must begin with the following module docstring (before `from __future__ import annotations`, imports, or other code):
+
+```python
+"""Copyright (c) 2026 Imperial Press. All rights reserved.
+
+Developed by MD Nwoshad Alam Chowdhury.
+"""
+```
+
+Apply this to all `.py` files under `app/`, `tests/`, and `alembic/`.
+
 ## Language
 
 - **Python 3.14** — use modern syntax: `X | Y` union types, `match/case`, `TypeAlias`

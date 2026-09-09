@@ -1,3 +1,9 @@
+/**
+ * Copyright (c) 2026 Imperial Press. All rights reserved.
+ *
+ * Developed by MD Nwoshad Alam Chowdhury.
+ */
+
 function requireEnv(key: keyof ImportMetaEnv): string {
   const value = import.meta.env[key]
   if (value === undefined || value === '') {

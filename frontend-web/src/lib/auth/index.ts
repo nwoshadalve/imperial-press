@@ -1,3 +1,9 @@
+/**
+ * Copyright (c) 2026 Imperial Press. All rights reserved.
+ *
+ * Developed by MD Nwoshad Alam Chowdhury.
+ */
+
 import { refreshToken } from '@/lib/api/auth';
 import { useAuthStore } from '@/stores/authStore';
 

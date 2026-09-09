@@ -1,3 +1,8 @@
+"""Copyright (c) 2026 Imperial Press. All rights reserved.
+
+Developed by MD Nwoshad Alam Chowdhury.
+"""
+
 """initial schema
 
 Revision ID: 2599bce583d9

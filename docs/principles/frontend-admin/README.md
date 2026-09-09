@@ -24,4 +24,5 @@ Read these before writing any code in `frontend-admin/`. Each doc is short and t
 
 ## Core Rules
 
+- **Copyright header on every file** — all `.ts`/`.tsx` files start with the Imperial Press copyright notice; see [coding-standards.md](./coding-standards.md)
 - **All config from root `.env`** — never hardcode API URLs, ports, or environment-specific values; read them through `src/config/` (`envDir` = monorepo root); no per-app `.env` files
