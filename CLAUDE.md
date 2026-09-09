@@ -65,6 +65,15 @@ uv run pytest -x                     # stop on first failure
 # Windows: .\scripts\compose.ps1 infra|prod …
 ```
 
+### Local dev scripts (repo root)
+
+```bash
+./scripts/dev-backend.sh              # API: sync + migrate + uvicorn --reload
+# Windows: scripts\dev-backend.cmd  |  scripts\dev-frontends.cmd (web + admin)
+```
+
+`DATABASE_URL`, `NEXT_PUBLIC_*`, and `VITE_API_BASE_URL` are auto-built from ports; `ALLOWED_ORIGINS` is always set explicitly in `.env`.
+
 See [docs/setup.md](docs/setup.md).
 
 ---

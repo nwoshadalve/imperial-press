@@ -23,9 +23,11 @@ RUN npm run build
 FROM node:24-alpine AS runner
 WORKDIR /app
 
+ARG CONTAINER_WEB_PORT=3000
+
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
-    PORT=3000 \
+    PORT=$CONTAINER_WEB_PORT \
     HOSTNAME=0.0.0.0
 
 RUN addgroup --system --gid 1001 nodejs \

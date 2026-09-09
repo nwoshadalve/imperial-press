@@ -148,7 +148,7 @@ async def login(request: Request, body: LoginRequest, session: AsyncSession = De
 
 ## CORS
 
-Only the public site origin is allowed in production (admin is same-origin under `/admin`). Local hybrid lists `http://localhost:50173` and `http://localhost:50174`. Configured once in `main.py` via `ALLOWED_ORIGINS`. Never use `allow_origins=["*"]`.
+Only the public site origin is allowed in production (admin is same-origin under `/admin`). Local hybrid lists both dev-server origins, e.g. `http://localhost:${WEB_PORT}` and `http://localhost:${ADMIN_PORT}`. **`ALLOWED_ORIGINS` is always set explicitly in `.env`** — it is not auto-built from ports. Configured in `main.py` via settings. Never use `allow_origins=["*"]`.
 
 ---
 

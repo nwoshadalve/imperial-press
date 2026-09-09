@@ -28,7 +28,9 @@ Academic publishing platform for managing journals, peer review, submissions, an
 | **Local development** | Run on your machine (hot reload) | Docker via `./scripts/compose.sh infra` |
 | **Production** (and other remote envs) | Docker | Docker via `./scripts/compose.sh prod` |
 
-Config is global: repo-root `.env` (secrets + app config) and `.env.compose` (Docker host ports). No per-app `.env` files.
+**Config is global** — repo-root `.env` (secrets + app ports) and `.env.compose` (Docker `CONTAINER_*` / `HOST_*` ports). No per-app `.env` files.
+
+**URLs are mostly derived from ports** — backend connection strings and browser-facing API/Meili URLs are built automatically from `API_PORT`, `INFRA_HOST`, and `HOST_*` in `.env.compose`. You still set **`ALLOWED_ORIGINS`** explicitly (CORS origins are not always localhost).
 
 **Single domain:** public site at `/`, admin at `/admin`, API on its own port (`API_PORT` locally / `HOST_API_PORT` in production).
 
@@ -39,7 +41,7 @@ Config is global: repo-root `.env` (secrets + app config) and `.env.compose` (Do
 ```bash
 cp .env.example .env
 cp .env.compose.example .env.compose
-# Edit secrets in .env
+# Edit secrets in .env; adjust ports in .env / .env.compose if defaults clash
 ```
 
 **Local development**
@@ -48,11 +50,15 @@ cp .env.compose.example .env.compose
 ./scripts/compose.sh infra up -d          # Windows: .\scripts\compose.ps1 infra up -d
 
 ./scripts/dev-backend.sh                  # Windows: scripts\dev-backend.cmd
-                                          # → sync + migrate + http://localhost:8000
+                                          # → sync + migrate + API on API_PORT
 
-cd frontend-web && npm ci && npm run dev      # → http://localhost:50173/
-cd frontend-admin && npm ci && npm run dev    # → http://localhost:50174/admin/
+# Frontends (either together on Windows, or separately):
+scripts\dev-frontends.cmd                 # Windows — web + admin in two windows
+cd frontend-web && npm ci && npm run dev  # → http://localhost:$WEB_PORT/
+cd frontend-admin && npm ci && npm run dev # → http://localhost:$ADMIN_PORT/admin/
 ```
+
+Set `ALLOWED_ORIGINS` in `.env` to match your web and admin dev URLs (e.g. `http://localhost:50173,http://localhost:50174`).
 
 **Production**
 
@@ -62,7 +68,7 @@ cd frontend-admin && npm ci && npm run dev    # → http://localhost:50174/admin
 # Site: https://$DOMAIN/  ·  Admin: https://$DOMAIN/admin/  ·  API: :$HOST_API_PORT
 ```
 
-Full steps, TLS, troubleshooting, and checklists: **[docs/setup.md](docs/setup.md)**.
+Full steps, env reference, TLS, troubleshooting, and checklists: **[docs/setup.md](docs/setup.md)**.
 
 ---
 
@@ -74,13 +80,23 @@ imperial-press/
 ├── frontend-admin/        # Admin panel (React + Vite) — local or Docker
 ├── backend/               # REST API (FastAPI) — local or Docker
 ├── infra/                 # Compose, Dockerfiles, Nginx, Postgres, Garage
-├── scripts/               # compose.sh / compose.ps1 (infra | prod | cert)
+├── scripts/               # compose.*, dev-backend.*, dev-frontends.cmd, env helpers
 ├── compose.yaml           # Root Compose entry
 ├── .env.example           # Secrets & app config template
-├── .env.compose.example   # Host publish ports template
+├── .env.compose.example   # Docker port template (CONTAINER_* + HOST_*)
 └── docs/
     └── setup.md           # ← onboarding guide
 ```
+
+### Dev scripts (`scripts/`)
+
+| Script | Purpose |
+|---|---|
+| `compose.sh` / `compose.ps1` | Docker Compose wrapper (`infra` \| `prod` \| `cert`) — loads `.env` + `.env.compose` |
+| `dev-backend.sh` / `.cmd` / `.ps1` | API: `uv sync` → migrate → uvicorn with reload |
+| `dev-frontends.cmd` | Windows: `npm ci` (if needed) → start web + admin dev servers |
+| `load-repo-env.mjs` | Merges repo-root env files for Node tooling |
+| `resolve-env-urls.mjs` | Builds API / Meili / site URLs from ports |
 
 ---
 

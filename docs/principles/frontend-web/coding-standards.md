@@ -87,13 +87,14 @@ All configuration comes from the **repo-root** `.env` — never hardcode URLs, s
 
 | Kind | Variables | Notes |
 |---|---|---|
-| Public (browser) | `NEXT_PUBLIC_API_BASE_URL`, `NEXT_PUBLIC_MEILISEARCH_HOST`, `NEXT_PUBLIC_MEILISEARCH_SEARCH_KEY` | Safe to expose; search key is read-only and scoped |
+| Public (browser) | `NEXT_PUBLIC_API_BASE_URL`, `NEXT_PUBLIC_MEILISEARCH_HOST`, `NEXT_PUBLIC_MEILISEARCH_SEARCH_KEY` | Auto-built from `API_PORT` / `HOST_MEILI_PORT` unless overridden; search key comes from `MEILISEARCH_SEARCH_KEY` |
 | Server-only | `NEXT_REVALIDATE_SECRET` | Never prefix with `NEXT_PUBLIC_` |
 | Local port | `WEB_PORT` | Mapped to `PORT` in `next.config.ts` |
 | Never in browser | `MEILISEARCH_MASTER_KEY` (backend only) | Must not appear as `NEXT_PUBLIC_*` |
 
 - Read app config only via `src/config/` — do not scatter `process.env.*` through pages/components
-- `next.config.ts` loads env from the monorepo root via `loadEnvConfig(..., forceReload: true)` and exposes `NEXT_PUBLIC_*` through `env` (Next may otherwise cache an empty load from `frontend-web/` which has no local `.env`)
+- Use **static** `process.env.NEXT_PUBLIC_*` in `src/config/` — dynamic `process.env[key]` is not inlined by Next
+- `next.config.ts` + `scripts/next-with-root-env.mjs` load repo-root env via `scripts/resolve-env-urls.mjs` and inject `NEXT_PUBLIC_*` before the dev server starts
 - `npm run dev` / `start` go through `scripts/next-with-root-env.mjs` so `WEB_PORT` is applied before Next binds
 - Onboard by copying root `.env.example` → `.env`
 - Missing required vars must fail loudly at startup/import — do not silently fall back to localhost

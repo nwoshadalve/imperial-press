@@ -19,7 +19,7 @@ from app.main import app
 import app.models  # noqa: F401
 from app.modules.users.models import User
 
-TEST_DB_URL = os.environ.get("TEST_DATABASE_URL", settings.database_url)
+TEST_DB_URL = os.environ.get("TEST_DATABASE_URL", settings.test_database_url)
 
 
 @pytest_asyncio.fixture(scope="session")

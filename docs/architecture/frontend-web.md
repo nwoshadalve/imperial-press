@@ -2,7 +2,7 @@
 
 **Tech:** Next.js 16.2 LTS · React 19.2 · TypeScript 6.0 · Tailwind CSS 4.3  
 **Serves:** Readers, Authors, Reviewers (public + authenticated)  
-**URL:** `https://$DOMAIN/` (Nginx → port 3000; local: `http://localhost:50173/`)
+**URL:** `https://$DOMAIN/` (Nginx → `CONTAINER_WEB_PORT`; local: `http://localhost:$WEB_PORT/`)
 
 ---
 

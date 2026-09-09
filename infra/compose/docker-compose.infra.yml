@@ -7,15 +7,15 @@ services:
 
   db:
     ports:
-      - "${HOST_POSTGRES_PORT}:5432"
+      - "${HOST_POSTGRES_PORT}:${CONTAINER_POSTGRES_PORT}"
 
   search:
     ports:
-      - "${HOST_MEILI_PORT}:7700"
+      - "${HOST_MEILI_PORT}:${CONTAINER_MEILI_PORT}"
     environment:
       MEILI_ENV: development
 
   storage:
     ports:
-      - "${HOST_GARAGE_S3_PORT}:3900"
-      - "${HOST_GARAGE_ADMIN_PORT}:3903"
+      - "${HOST_GARAGE_S3_PORT}:${CONTAINER_GARAGE_S3_PORT}"
+      - "${HOST_GARAGE_ADMIN_PORT}:${CONTAINER_GARAGE_ADMIN_PORT}"

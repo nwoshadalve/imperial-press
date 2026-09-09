@@ -8,6 +8,8 @@ import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { resolve } from 'path'
+import { loadRepoEnv } from '../scripts/load-repo-env.mjs'
+import { pick, resolveApiBaseUrl } from '../scripts/resolve-env-urls.mjs'
 
 const repoRoot = resolve(__dirname, '..')
 
@@ -16,11 +18,7 @@ function envValue(
   fileEnv: Record<string, string>,
   key: string,
 ): string | undefined {
-  const fromFile = fileEnv[key]
-  if (fromFile !== undefined && fromFile !== '') return fromFile
-  const fromProcess = process.env[key]
-  if (fromProcess !== undefined && fromProcess !== '') return fromProcess
-  return undefined
+  return pick(fileEnv, key)
 }
 
 /** Normalize to "/admin" style (leading slash, no trailing slash). */
@@ -30,14 +28,12 @@ function normalizeBasePath(raw: string): string {
 }
 
 export default defineConfig(({ mode }) => {
-  const fileEnv = loadEnv(mode, repoRoot, '')
-
-  const apiBaseUrl = envValue(fileEnv, 'VITE_API_BASE_URL')
-  if (!apiBaseUrl) {
-    throw new Error(
-      'VITE_API_BASE_URL is required — set it in the repo-root .env (see .env.example).',
-    )
+  const fileEnv = {
+    ...loadRepoEnv(repoRoot),
+    ...loadEnv(mode, repoRoot, ''),
   }
+
+  const apiBaseUrl = resolveApiBaseUrl(fileEnv)
 
   const port = Number(envValue(fileEnv, 'ADMIN_PORT'))
   if (!Number.isFinite(port) || port <= 0) {
@@ -55,6 +51,9 @@ export default defineConfig(({ mode }) => {
   return {
     base,
     envDir: repoRoot,
+    define: {
+      'import.meta.env.VITE_API_BASE_URL': JSON.stringify(apiBaseUrl),
+    },
     plugins: [
       react(),
       tailwindcss(),

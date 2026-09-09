@@ -7,18 +7,30 @@
 import type { NextConfig } from "next";
 import { loadEnvConfig } from "@next/env";
 import { resolve } from "path";
+import { loadRepoEnv } from "../scripts/load-repo-env.mjs";
+import {
+  pick,
+  resolveApiBaseUrl,
+  resolveMeilisearchHost,
+  resolveSiteUrl,
+} from "../scripts/resolve-env-urls.mjs";
 
 // Load global env from the monorepo root (not frontend-web/).
 // forceReload: Next may have already cached an empty load from this app dir
 // (no local .env), which would otherwise ignore the monorepo-root path.
 const repoRoot = resolve(__dirname, "..");
 loadEnvConfig(repoRoot, process.env.NODE_ENV !== "production", console, true);
+const repoEnv = loadRepoEnv(repoRoot);
 
-function requireEnv(key: string): string {
-  const value = process.env[key];
-  if (value === undefined || value === "") {
+function requireFromEnv(
+  env: Record<string, string>,
+  key: string,
+  label: string,
+): string {
+  const value = pick(env, key);
+  if (!value) {
     throw new Error(
-      `Missing required environment variable: ${key}. Set it in the repo-root .env (see .env.example).`,
+      `Missing required environment variable: ${key} (${label}). Set it in the repo-root .env (see .env.example).`,
     );
   }
   return value;
@@ -26,15 +38,18 @@ function requireEnv(key: string): string {
 
 // Inlined into the client/server bundles — Turbopack does not pick up parent-dir .env alone.
 const publicEnv = {
-  NEXT_PUBLIC_API_BASE_URL: requireEnv("NEXT_PUBLIC_API_BASE_URL"),
-  NEXT_PUBLIC_MEILISEARCH_HOST: requireEnv("NEXT_PUBLIC_MEILISEARCH_HOST"),
-  NEXT_PUBLIC_MEILISEARCH_SEARCH_KEY: requireEnv("NEXT_PUBLIC_MEILISEARCH_SEARCH_KEY"),
-  // Optional — only used to build absolute OG/canonical URLs; empty when unset.
-  NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL ?? "",
+  NEXT_PUBLIC_API_BASE_URL: resolveApiBaseUrl(repoEnv),
+  NEXT_PUBLIC_MEILISEARCH_HOST: resolveMeilisearchHost(repoEnv),
+  NEXT_PUBLIC_MEILISEARCH_SEARCH_KEY: requireFromEnv(
+    repoEnv,
+    "MEILISEARCH_SEARCH_KEY",
+    "MeiliSearch search-only key",
+  ),
+  NEXT_PUBLIC_SITE_URL: resolveSiteUrl(repoEnv),
 };
 
 if (!process.env.PORT) {
-  process.env.PORT = requireEnv("WEB_PORT");
+  process.env.PORT = requireFromEnv(repoEnv, "WEB_PORT", "public website dev port");
 }
 
 // The API host is allowed as a remote image source (covers presigned asset URLs).

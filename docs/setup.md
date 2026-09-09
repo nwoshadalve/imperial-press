@@ -14,22 +14,22 @@ How to run this repo after a fresh clone: **local development** (apps on your ma
 ```
 Local development                         Production
 ─────────────────                         ──────────
-  Next.js  :50173  (/)     ─┐               Nginx :80/:443
-  Vite     :50174  (/admin) ┼─► host          ├─► /        → web
-  FastAPI  :8000            ─┘                └─► /admin/  → admin
-                                                     API :8000 (host port)
+  Next.js  :WEB_PORT     (/)     ─┐       Nginx :HOST_HTTP/:HOST_HTTPS
+  Vite     :ADMIN_PORT   (/admin) ┼─► host    ├─► /        → web
+  FastAPI  :API_PORT              ─┘           └─► /admin/  → admin
+                                                     API :HOST_API_PORT
          │                                      │
          ▼                                      ▼
   ┌─────────────────┐                    ┌─────────────────┐
   │ Docker          │                    │ Docker          │
-  │  Postgres :5433 │                    │  Postgres       │
-  │  Meili    :7700 │                    │  MeiliSearch    │
-  │  Garage   :3900 │                    │  Garage         │
-  └─────────────────┘                    │  (internal only)│
-                                         └─────────────────┘
+  │  Postgres       │                    │  Postgres       │
+  │  MeiliSearch    │                    │  MeiliSearch    │
+  │  Garage         │                    │  Garage         │
+  │  (HOST_* ports) │                    │  (internal)     │
+  └─────────────────┘                    └─────────────────┘
 ```
 
-Local Postgres is published on host port **5433** by default (`HOST_POSTGRES_PORT`) so it does not collide with a system Postgres on `5432`. Inside Docker the container still listens on `5432`.
+Default example ports are in `.env.example` / `.env.compose.example` (`WEB_PORT=50173`, `HOST_POSTGRES_PORT=5433`, etc.). Change them in your `.env` / `.env.compose` if they clash with other services.
 
 **Routing model (single domain, no subdomains):**
 
@@ -39,7 +39,7 @@ Local Postgres is published on host port **5433** by default (`HOST_POSTGRES_POR
 | Admin panel | `/admin` (`ADMIN_BASE_PATH`) | `frontend-admin` |
 | REST API | dedicated port (`API_PORT` / `HOST_API_PORT`) | `backend` |
 
-All secrets and app config live in the **repo-root** `.env`. Docker host ports live in `.env.compose`. Do **not** create `.env` files inside `backend/`, `frontend-web/`, or `frontend-admin/`.
+All secrets and app config live in the **repo-root** `.env`. Docker host and container ports live in `.env.compose`. Do **not** create `.env` files inside `backend/`, `frontend-web/`, or `frontend-admin/`.
 
 ---
 
@@ -75,11 +75,12 @@ cp .env.compose.example .env.compose
 
 Edit `.env`:
 
-- Set strong values for `DB_PASSWORD`, `SECRET_KEY`, `MEILISEARCH_MASTER_KEY`
-- Keep local URL defaults for hybrid development (`DOMAIN=localhost`, `DATABASE_URL=...@localhost:5433`, API at `http://localhost:8000`, …)
-- For production, set real `DOMAIN`, `CERTBOT_EMAIL`, SMTP, Garage keys, and public API URLs (`NEXT_PUBLIC_API_BASE_URL` / `VITE_API_BASE_URL` → `http://$DOMAIN:$HOST_API_PORT`)
+- Set strong values for `DB_PASSWORD`, `SECRET_KEY`, `MEILISEARCH_MASTER_KEY`, `MEILISEARCH_SEARCH_KEY`
+- Set `WEB_PORT`, `ADMIN_PORT`, `API_PORT`, and `INFRA_HOST` for local hybrid dev
+- Set **`ALLOWED_ORIGINS`** to match your browser origins (e.g. `http://localhost:50173,http://localhost:50174` — update if you change `WEB_PORT` / `ADMIN_PORT`)
+- For production, set real `DOMAIN`, `CERTBOT_EMAIL`, SMTP, Garage keys, and `ALLOWED_ORIGINS=https://$DOMAIN`
 
-Edit `.env.compose` if default host ports clash (e.g. another Postgres already on `5433`). Whenever you change `HOST_POSTGRES_PORT`, update `DATABASE_URL` and `TEST_DATABASE_URL` in `.env` to the same host port.
+Edit `.env.compose` if Docker publish ports clash (e.g. another Postgres already on `5433`). You do **not** need to hand-edit `DATABASE_URL` when you change `HOST_POSTGRES_PORT` — the backend builds it from `INFRA_HOST` + `HOST_POSTGRES_PORT`.
 
 Always use the helper scripts so both env files are loaded:
 
@@ -95,7 +96,7 @@ Shortcuts:
 
 | Command | Meaning |
 |---|---|
-| `… infra <args>` | Local hybrid — Postgres, MeiliSearch, Garage (+ published ports) |
+| `… infra <args>` | Local hybrid — Postgres, MeiliSearch, Garage on `Imperial-press-network` |
 | `… prod <args>` | Full stack in Docker (apps + nginx + infra) |
 | `… cert <args>` | Certbot profile (TLS issuance / renew) |
 
@@ -110,14 +111,14 @@ Shortcuts:
 # Windows: .\scripts\compose.ps1 infra up -d
 ```
 
-This starts **only** `db`, `search`, and `storage`. Apps are not containerized.
+This starts **only** `db`, `search`, and `storage`. Apps are not containerized. All infra services share the Docker network `Imperial-press-network`.
 
-Check:
+Check (ports from your `.env.compose`):
 
 | Service | URL |
 |---|---|
 | PostgreSQL | `localhost:${HOST_POSTGRES_PORT}` (default `5433`) |
-| MeiliSearch UI | http://localhost:${HOST_MEILI_PORT} (default `7700`) |
+| MeiliSearch UI | `http://localhost:${HOST_MEILI_PORT}` (default `7700`) |
 | Garage S3 | `localhost:${HOST_GARAGE_S3_PORT}` (default `3900`) |
 | Garage admin | `localhost:${HOST_GARAGE_ADMIN_PORT}` (default `3903`) |
 
@@ -133,52 +134,55 @@ One command for first-time and everyday local use — installs deps, applies mig
 
 ```bash
 ./scripts/dev-backend.sh
-# Windows CMD:     scripts\dev-backend.cmd
+# Windows CMD:        scripts\dev-backend.cmd
 # Windows PowerShell: .\scripts\dev-backend.ps1
 ```
 
-→ http://localhost:8000 (port from `API_PORT` in `.env`; Swagger at `/docs` when `ENABLE_SWAGGER=true`)
+→ `http://localhost:${API_PORT}` (Swagger at `/docs` when `ENABLE_SWAGGER=true`)
 
-The script runs `uv sync` → `alembic upgrade head` → `uvicorn … --reload`. Safe to re-run anytime (sync and migrate are idempotent). Requires infra up (§2.1). The API reads the repo-root `.env` automatically (`DATABASE_URL`, `MEILISEARCH_URL`, `GARAGE_ENDPOINT` should point at `localhost`).
+The script runs `uv sync` → `alembic upgrade head` → `uvicorn … --reload`. Safe to re-run anytime. Requires infra up (§2.1).
+
+The API loads repo-root `.env` + `.env.compose` and **auto-builds** `DATABASE_URL`, `TEST_DATABASE_URL`, `MEILISEARCH_URL`, and `GARAGE_ENDPOINT` from `INFRA_HOST` and `HOST_*` ports.
 
 On startup the API seeds a default admin if that email is not already registered. Credentials: [default-admin-credentials.md](./default-admin-credentials.md).
 
-### 2.3 Public website (frontend-web)
+### 2.3 Frontends (web + admin)
 
-```bash
-cd frontend-web
-npm ci
-npm run dev
+**Windows — both at once:**
+
+```cmd
+scripts\dev-frontends.cmd
 ```
 
-→ http://localhost:50173 (port from `WEB_PORT` in `.env`)
+Runs `npm ci` in each app when `node_modules` is missing, then opens two dev-server windows.
 
-### 2.4 Admin panel (frontend-admin)
+**Either platform — one at a time:**
 
 ```bash
-cd frontend-admin
-npm ci
-npm run dev
+cd frontend-web && npm ci && npm run dev
+# → http://localhost:${WEB_PORT}/
+
+cd frontend-admin && npm ci && npm run dev
+# → http://localhost:${ADMIN_PORT}${ADMIN_BASE_PATH}/  (default /admin/)
 ```
 
-→ http://localhost:50174/admin/ (port from `ADMIN_PORT`; path from `ADMIN_BASE_PATH`, default `/admin`)
+Browser-facing URLs (`NEXT_PUBLIC_API_BASE_URL`, `NEXT_PUBLIC_MEILISEARCH_HOST`, `VITE_API_BASE_URL`) are **auto-built** from `API_PORT` and `HOST_MEILI_PORT`. `scripts/next-with-root-env.mjs` injects them before Next starts; Vite resolves them in `vite.config.ts`.
 
 The Vite `base` and React Router basename both come from `ADMIN_BASE_PATH`, so local and production share the same `/admin` URL prefix.
 
-### 2.5 Local checklist
+### 2.4 Local checklist
 
-- [ ] `.env` and `.env.compose` exist at repo root  
-- [ ] `DOMAIN=localhost` and API URLs point at `http://localhost:8000`  
-- [ ] `./scripts/compose.sh infra up -d` is healthy  
-- [ ] `./scripts/dev-backend.sh` (or `dev-backend.cmd` / `.ps1` on Windows) starts the API (sync + migrate + live reload)  
-- [ ] Web and admin each start with hot reload (`npm run dev`)  
-- [ ] CORS: `ALLOWED_ORIGINS` includes `http://localhost:50173` and `http://localhost:50174`
+- [ ] `.env` and `.env.compose` exist at repo root
+- [ ] `DOMAIN=localhost`, `INFRA_HOST=localhost`
+- [ ] `./scripts/compose.sh infra up -d` is healthy
+- [ ] `./scripts/dev-backend.sh` (or `dev-backend.cmd` / `.ps1` on Windows) starts the API
+- [ ] Web and admin start with hot reload (`dev-frontends.cmd` or `npm run dev`)
+- [ ] `ALLOWED_ORIGINS` lists `http://localhost:${WEB_PORT}` and `http://localhost:${ADMIN_PORT}`
+- [ ] `MEILISEARCH_SEARCH_KEY` is set in `.env` (mapped to `NEXT_PUBLIC_MEILISEARCH_SEARCH_KEY` automatically)
 
-### 2.6 Optional one-time infra bootstrap
+### 2.5 Optional one-time infra bootstrap
 
 After first Garage start, create buckets and access keys (needed before file uploads work). See [storage.md](./architecture/storage.md) §8 and [infra.md](./architecture/infra.md) deployment runbook.
-
-Generate a MeiliSearch search-only key and put it in `.env` as `MEILISEARCH_SEARCH_KEY` / `NEXT_PUBLIC_MEILISEARCH_SEARCH_KEY` when search is wired up.
 
 ---
 
@@ -190,21 +194,23 @@ Use this on a VM / staging / any environment where you do not run Node or Python
 
 At minimum:
 
-- Strong `DB_PASSWORD`, `SECRET_KEY`, Meili keys  
-- Real `DOMAIN`, `CERTBOT_EMAIL`  
-- Public URLs for the browser:
+- Strong `DB_PASSWORD`, `SECRET_KEY`, Meili keys
+- Real `DOMAIN`, `CERTBOT_EMAIL`
+- `ALLOWED_ORIGINS=https://$DOMAIN` (or your real browser origins)
+- Override auto-built URLs when the public hostname differs from internal Docker names:
 
 ```bash
 DOMAIN=example.com
 ADMIN_BASE_PATH=/admin
+ALLOWED_ORIGINS=https://example.com
 NEXT_PUBLIC_API_BASE_URL=http://example.com:8000
-NEXT_PUBLIC_MEILISEARCH_HOST=https://…   # or your exposed search endpoint policy
-NEXT_PUBLIC_MEILISEARCH_SEARCH_KEY=…
+NEXT_PUBLIC_MEILISEARCH_HOST=https://…   # per your search exposure policy
 VITE_API_BASE_URL=http://example.com:8000
 GARAGE_PUBLIC_ASSETS_ENDPOINT=https://example.com/assets
-ALLOWED_ORIGINS=https://example.com
 ENABLE_SWAGGER=false
 ```
+
+`MEILISEARCH_SEARCH_KEY` stays in `.env`; frontends pick it up at build time.
 
 Point DNS for `DOMAIN` (and optional `www`) at the host before requesting certificates. Open `HOST_API_PORT` (default `8000`) for the API.
 
@@ -250,13 +256,14 @@ git pull origin main
 
 ### 3.5 Production checklist
 
-- [ ] Secrets rotated away from example placeholders  
-- [ ] `DOMAIN` resolves to the host  
-- [ ] `prod up -d --build` healthy  
-- [ ] Migrations applied  
-- [ ] TLS issued and Nginx reloaded  
-- [ ] API reachable on `HOST_API_PORT`  
-- [ ] Garage buckets + API keys configured ([storage.md](./architecture/storage.md))  
+- [ ] Secrets rotated away from example placeholders
+- [ ] `DOMAIN` resolves to the host
+- [ ] `prod up -d --build` healthy
+- [ ] Migrations applied
+- [ ] TLS issued and Nginx reloaded
+- [ ] API reachable on `HOST_API_PORT`
+- [ ] `ALLOWED_ORIGINS` matches production browser origins
+- [ ] Garage buckets + API keys configured ([storage.md](./architecture/storage.md))
 
 ---
 
@@ -267,7 +274,8 @@ git pull origin main
 | Start Docker pieces | `./scripts/compose.sh infra up -d` | `./scripts/compose.sh prod up -d --build` |
 | Stop Docker pieces | `./scripts/compose.sh infra down` | `./scripts/compose.sh prod down` |
 | Logs | `./scripts/compose.sh infra logs -f` | `./scripts/compose.sh prod logs -f api` |
-| Start API (live reload) | `./scripts/dev-backend.sh` (Windows: `scripts\dev-backend.cmd` or `.\scripts\dev-backend.ps1`) | — (use Compose `api`) |
+| Start API (live reload) | `./scripts/dev-backend.sh` (Windows: `scripts\dev-backend.cmd`) | — (use Compose `api`) |
+| Start frontends | `scripts\dev-frontends.cmd` (Windows) or `npm run dev` per app | — (use Compose `web` / `admin`) |
 | Migrate DB | `cd backend && uv run alembic upgrade head` | `./scripts/compose.sh prod exec api uv run alembic upgrade head` |
 | Shell in API | — | `./scripts/compose.sh prod exec api sh` |
 
@@ -279,24 +287,36 @@ git pull origin main
 |---|---|---|
 | `.env.example` | yes | Template for secrets + app config |
 | `.env` | **no** | Your real secrets (apps + Compose) |
-| `.env.compose.example` | yes | Template for host publish ports |
-| `.env.compose` | **no** | Host ports for Docker publishes |
+| `.env.compose.example` | yes | Template for Docker `CONTAINER_*` and `HOST_*` ports |
+| `.env.compose` | **no** | Container-internal and host publish ports for Compose |
 
-Important local (hybrid) values:
+### What you set manually
 
-| Variable | File | Typical local value |
+| Variable | File | Notes |
 |---|---|---|
-| `DOMAIN` | `.env` | `localhost` |
-| `ADMIN_BASE_PATH` | `.env` | `/admin` |
-| `HOST_POSTGRES_PORT` | `.env.compose` | `5433` (container remains `5432`) |
-| `DATABASE_URL` | `.env` | `postgresql+asyncpg://…@localhost:5433/imperial_press` (must match `HOST_POSTGRES_PORT`) |
-| `MEILISEARCH_URL` | `.env` | `http://localhost:7700` |
-| `GARAGE_ENDPOINT` | `.env` | `http://localhost:3900` |
-| `NEXT_PUBLIC_API_BASE_URL` / `VITE_API_BASE_URL` | `.env` | `http://localhost:8000` |
-| `WEB_PORT` / `ADMIN_PORT` / `API_PORT` | `.env` | `50173` / `50174` / `8000` |
-| `ALLOWED_ORIGINS` | `.env` | `http://localhost:50173,http://localhost:50174` |
+| `WEB_PORT` / `ADMIN_PORT` / `API_PORT` | `.env` | Local hybrid app ports (defaults `50173` / `50174` / `8000`) |
+| `INFRA_HOST` | `.env` | Hostname for reaching Docker-published infra from the host (default `localhost`) |
+| `ALLOWED_ORIGINS` | `.env` | **Always explicit** — comma-separated CORS origins; must match your real browser URLs |
+| `MEILISEARCH_SEARCH_KEY` | `.env` | Search-only key; frontends map this to `NEXT_PUBLIC_MEILISEARCH_SEARCH_KEY` at build/dev start |
+| `HOST_*` / `CONTAINER_*` | `.env.compose` | All Docker publish and internal listen ports |
 
-In production Compose, the API container ignores host `DATABASE_URL` for the DB host and uses `db:5432` on the internal network (set in Compose). Browser-facing `NEXT_PUBLIC_*` / `VITE_*` must point at the public API host:port. Nginx only terminates TLS for the site domain (`/` and `/admin/`).
+### What is auto-built (local hybrid)
+
+| Variable | Built from | Example (defaults) |
+|---|---|---|
+| `DATABASE_URL` | `INFRA_HOST` + `HOST_POSTGRES_PORT` + DB creds | `postgresql+asyncpg://…@localhost:5433/…` |
+| `TEST_DATABASE_URL` | same pattern | `…_test` database |
+| `MEILISEARCH_URL` | `INFRA_HOST` + `HOST_MEILI_PORT` | `http://localhost:7700` |
+| `GARAGE_ENDPOINT` | `INFRA_HOST` + `HOST_GARAGE_S3_PORT` | `http://localhost:3900` |
+| `NEXT_PUBLIC_API_BASE_URL` / `VITE_API_BASE_URL` | `INFRA_HOST` + `API_PORT` | `http://localhost:8000` |
+| `NEXT_PUBLIC_MEILISEARCH_HOST` | `INFRA_HOST` + `HOST_MEILI_PORT` | `http://localhost:7700` |
+| `NEXT_PUBLIC_SITE_URL` | `INFRA_HOST` + `WEB_PORT` | `http://localhost:50173` |
+
+Set any of these explicitly in `.env` to override (required for production Docker builds when the public hostname differs).
+
+Implementation: `backend/app/core/config.py`, `scripts/resolve-env-urls.mjs`, `frontend-web/next.config.ts`, `frontend-web/scripts/next-with-root-env.mjs`, `frontend-admin/vite.config.ts`.
+
+Compose reads all service ports from `.env.compose`: `CONTAINER_*` for in-network listen ports and `HOST_*` for publishes to the host. In production, the API container receives `DATABASE_URL` from Compose (`db:${CONTAINER_POSTGRES_PORT}`), not your host hybrid URL. Nginx terminates TLS for the site domain (`/` and `/admin/`); the API is published separately on `HOST_API_PORT`.
 
 ---
 
@@ -306,16 +326,19 @@ In production Compose, the API container ignores host `DATABASE_URL` for the DB 
 Create them from the `.example` files at the repo root.
 
 **API cannot connect to Postgres**  
-Ensure `infra up` is running, `DATABASE_URL` uses `localhost` with the same port as `HOST_POSTGRES_PORT` in `.env.compose` (default `5433`), and `DB_PASSWORD` matches `.env`.
+Ensure `infra up` is running and `DB_PASSWORD` matches `.env`. The backend builds `DATABASE_URL` from `HOST_POSTGRES_PORT` — verify that port in `.env.compose` matches what Docker published (`docker ps`).
 
 **Port already in use**  
-Change the conflicting `HOST_*` value in `.env.compose` (or `WEB_PORT` / `ADMIN_PORT` / `API_PORT` in `.env`) and restart. For Postgres, set `HOST_POSTGRES_PORT` and mirror that port in `DATABASE_URL` / `TEST_DATABASE_URL`, then recreate the `db` service (`… infra up -d --force-recreate db`).
+Change the conflicting `HOST_*` in `.env.compose` or `WEB_PORT` / `ADMIN_PORT` / `API_PORT` in `.env`, update `ALLOWED_ORIGINS` if web/admin ports changed, then restart. Recreate infra if needed: `… infra up -d --force-recreate db`.
+
+**Web: `Missing required environment variable: NEXT_PUBLIC_*`**  
+Restart the dev server after pulling changes. URLs are injected by `next-with-root-env.mjs` and `next.config.ts`; `src/config/index.ts` must use static `process.env.NEXT_PUBLIC_*` access (not `process.env[key]`).
+
+**Admin / web missing env vars**  
+They load the **root** `.env` (Vite `envDir`, Next `loadEnvConfig` + `next-with-root-env.mjs`). Do not add app-local `.env` files.
 
 **Admin 404 on refresh under `/admin/...`**  
 Confirm Vite was built with `ADMIN_BASE_PATH=/admin` and Nginx has `location /admin/` proxying to the admin container.
-
-**Admin / web missing env vars**  
-They load the **root** `.env` (Vite `envDir`, Next `loadEnvConfig` + `scripts/next-with-root-env.mjs`). Do not add app-local `.env` files.
 
 **Production Nginx SSL errors**  
 Certs missing under the certbot volume — run the `cert` flow in §3.3, then reload Nginx.

@@ -1,10 +1,8 @@
 """Copyright (c) 2026 Imperial Press. All rights reserved.
 
 Developed by MD Nwoshad Alam Chowdhury.
-"""
 
-"""Import all ORM models so SQLAlchemy can resolve string relationship() targets.
-
+Import all ORM models so SQLAlchemy can resolve string relationship() targets.
 Import this module once at application / Alembic / test startup. Do not import
 individual models from here in domain code — keep using each module's models.py.
 """

@@ -26,10 +26,11 @@ RUN addgroup --system --gid 1001 fastapi \
  && adduser  --system --uid 1001 --ingroup fastapi fastapi \
  && chown -R fastapi:fastapi /app
 
+ARG CONTAINER_API_PORT=8000
+ENV CONTAINER_API_PORT=$CONTAINER_API_PORT
+
 USER fastapi
 
 EXPOSE 8000
 
-CMD ["uv", "run", "uvicorn", "app.main:app", \
-     "--host", "0.0.0.0", "--port", "8000", \
-     "--workers", "4"]
+CMD ["sh", "-c", "uv run uvicorn app.main:app --host 0.0.0.0 --port $CONTAINER_API_PORT --workers 4"]

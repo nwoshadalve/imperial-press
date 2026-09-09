@@ -93,9 +93,9 @@ async def publish_paper(session: AsyncSession, paper_id: uuid.UUID) -> PaperPubl
 
 ## Config
 
-All configuration comes from the **repo-root** `.env` (with `.env.example` as the committed template). Load it only through `app/core/config.py` via `pydantic-settings`. Never hardcode URLs, secrets, ports, feature flags, or other environment-specific values in application code — and never put defaults for those values on the `Settings` class. Do not add `backend/.env` or other per-app env files.
+All configuration comes from the **repo-root** `.env` and `.env.compose` (with their `.example` templates). Load it only through `app/core/config.py` via `pydantic-settings`. Never hardcode URLs, secrets, ports, feature flags, or other environment-specific values in application code — and never put defaults for those values on the `Settings` class. Do not add `backend/.env` or other per-app env files.
 
-`Settings` resolves the monorepo root and loads `.env.example` then `.env` when those files exist; in Docker it relies on process environment injected by Compose.
+`Settings` resolves the monorepo root and loads `.env.compose.example` → `.env.compose` → `.env.example` → `.env` when those files exist. For local hybrid development it builds `DATABASE_URL`, `MEILISEARCH_URL`, and `GARAGE_ENDPOINT` from `INFRA_HOST` plus the `HOST_*` ports in `.env.compose`. `ALLOWED_ORIGINS` is always set explicitly in `.env` (browser origins are not always derivable from ports). In Docker production the API container receives explicit `DATABASE_URL` from Compose via process environment.
 
 ```python
 from app.core.config import settings

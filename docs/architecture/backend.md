@@ -2,7 +2,7 @@
 
 **Tech:** Python 3.14.6 · FastAPI 0.139 · SQLAlchemy 2.0 · Alembic · PostgreSQL 18 · MeiliSearch 1.48 · uv 0.11  
 **Serves:** Both frontends (public website + admin panel)  
-**URL:** `http://$DOMAIN:$HOST_API_PORT` (published host port; local: `http://localhost:8000`)
+**URL:** `http://$DOMAIN:$HOST_API_PORT` (published host port; local hybrid: `http://localhost:$API_PORT` from `.env`)
 
 ---
 

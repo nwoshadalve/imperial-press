@@ -4,16 +4,15 @@
  * Developed by MD Nwoshad Alam Chowdhury.
  */
 
-function requireEnv(key: keyof ImportMetaEnv): string {
-  const value = import.meta.env[key]
-  if (value === undefined || value === '') {
-    throw new Error(
-      `Missing required environment variable: ${key}. Set it in the repo-root .env (see .env.example).`,
-    )
-  }
-  return value
+// Static import.meta.env.VITE_* access is required — Vite replaces these at build
+// time from vite.config.ts define. Dynamic import.meta.env[key] is not replaced.
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL
+if (!apiBaseUrl) {
+  throw new Error(
+    'Missing required environment variable: VITE_API_BASE_URL. Set it in the repo-root .env (see .env.example).',
+  )
 }
 
 export const config = {
-  apiBaseUrl: requireEnv('VITE_API_BASE_URL'),
+  apiBaseUrl,
 } as const

@@ -113,10 +113,11 @@ All configuration comes from the **repo-root** `.env` — never hardcode URLs, p
 | Variable | Purpose |
 |---|---|
 | `ADMIN_PORT` | Vite dev/preview port |
-| `VITE_API_BASE_URL` | FastAPI base URL (proxy target + client config) |
+| `ADMIN_BASE_PATH` | Vite `base` + React Router basename (default `/admin`) |
+| `VITE_API_BASE_URL` | FastAPI base URL — auto-built from `API_PORT` via `scripts/resolve-env-urls.mjs` unless overridden |
 
-- Read client config only via `src/config/` (`import.meta.env`) — do not scatter `import.meta.env.*` through components
-- `vite.config.ts` must use `loadEnv` with `envDir` set to the repo root — no localhost fallbacks in code
+- Read client config only via `src/config/` — use static `import.meta.env.VITE_*` (not dynamic `import.meta.env[key]`)
+- `vite.config.ts` uses `loadRepoEnv` + `resolveApiBaseUrl` with `envDir` at the repo root — no localhost fallbacks in source
 - Onboard by copying root `.env.example` → `.env` (and `.env.compose.example` → `.env.compose` for Docker ports)
 
 ```ts

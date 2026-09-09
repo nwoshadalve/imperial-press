@@ -392,7 +392,9 @@ services:
       - MEILI_ENV=development  # Enables the MeiliSearch web UI at localhost:7700
 ```
 
-Local hybrid defaults publish Postgres on **5433** so a system Postgres on **5432** can keep running. Apps on the host must use that host port in `DATABASE_URL` / `TEST_DATABASE_URL`.
+Local hybrid defaults publish Postgres on **5433** (`HOST_POSTGRES_PORT`) so a system Postgres on **5432** can keep running. The API on the host auto-builds `DATABASE_URL` / `TEST_DATABASE_URL` from `INFRA_HOST` + `HOST_POSTGRES_PORT` — no manual URL editing when you change the publish port.
+
+All Compose services attach to the Docker network **`Imperial-press-network`** (`imperial-press-network` in compose files). Service listen ports use `${CONTAINER_*}` variables from `.env.compose`; host publishes use `${HOST_*}`.
 
 ---
 

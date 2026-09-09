@@ -2,7 +2,7 @@
 
 **Tech:** React 19.2 · Vite 8.1 · TypeScript 6.0 · Tailwind CSS 4.3 · Radix UI  
 **Serves:** Imperial Press internal staff (admins / editors)  
-**URL:** `https://$DOMAIN/admin/` (Nginx path prefix → port 3001; local: `http://localhost:50174/admin/`)
+**URL:** `https://$DOMAIN/admin/` (Nginx path prefix → `CONTAINER_ADMIN_PORT`; local: `http://localhost:$ADMIN_PORT/admin/`)
 
 ---
 

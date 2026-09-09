@@ -4,28 +4,32 @@
  * Developed by MD Nwoshad Alam Chowdhury.
  */
 
-function requireEnv(key: string): string {
-  const value = process.env[key];
-  if (value === undefined || value === '') {
-    throw new Error(
-      `Missing required environment variable: ${key}. Set it in the repo-root .env (see .env.example).`,
-    );
-  }
-  return value;
+function missingEnv(key: string): never {
+  throw new Error(
+    `Missing required environment variable: ${key}. Set it in the repo-root .env (see .env.example).`,
+  );
 }
 
-function optionalEnv(key: string): string | undefined {
-  const value = process.env[key];
-  return value === undefined || value === '' ? undefined : value;
-}
+// Static process.env.NEXT_PUBLIC_* access is required — Next inlines these at build
+// time from next.config.ts / the dev launcher. Dynamic process.env[key] is not replaced.
+const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+if (!apiBaseUrl) missingEnv('NEXT_PUBLIC_API_BASE_URL');
+
+const meilisearchHost = process.env.NEXT_PUBLIC_MEILISEARCH_HOST;
+if (!meilisearchHost) missingEnv('NEXT_PUBLIC_MEILISEARCH_HOST');
+
+const meilisearchSearchKey = process.env.NEXT_PUBLIC_MEILISEARCH_SEARCH_KEY;
+if (!meilisearchSearchKey) missingEnv('NEXT_PUBLIC_MEILISEARCH_SEARCH_KEY');
+
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || undefined;
 
 export const config = {
-  apiBaseUrl: requireEnv('NEXT_PUBLIC_API_BASE_URL'),
-  meilisearchHost: requireEnv('NEXT_PUBLIC_MEILISEARCH_HOST'),
-  meilisearchSearchKey: requireEnv('NEXT_PUBLIC_MEILISEARCH_SEARCH_KEY'),
+  apiBaseUrl,
+  meilisearchHost,
+  meilisearchSearchKey,
   // Public origin (e.g. https://imperialpress.com). Only used to build absolute
   // canonical/OG URLs; optional so local dev works without it.
-  siteUrl: optionalEnv('NEXT_PUBLIC_SITE_URL'),
+  siteUrl,
   siteName: 'Imperial Press',
   siteDescription: 'Academic publishing platform for peer-reviewed journals',
 } as const;

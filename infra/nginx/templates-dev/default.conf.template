@@ -6,7 +6,7 @@ server {
     server_name ${DOMAIN} www.${DOMAIN} localhost _;
 
     location /assets/ {
-        proxy_pass         http://storage:3902/;
+        proxy_pass         http://storage:${CONTAINER_GARAGE_WEB_PORT}/;
         proxy_set_header   Host public-assets.web.garage;
         proxy_hide_header  x-amz-id-2;
         proxy_hide_header  x-amz-request-id;
@@ -20,7 +20,7 @@ server {
     }
 
     location ${ADMIN_BASE_PATH}/ {
-        proxy_pass       http://admin:3001/;
+        proxy_pass       http://admin:${CONTAINER_ADMIN_PORT}/;
         proxy_set_header Host $$host;
         proxy_set_header X-Real-IP $$remote_addr;
         proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
@@ -28,7 +28,7 @@ server {
     }
 
     location / {
-        proxy_pass         http://web:3000;
+        proxy_pass         http://web:${CONTAINER_WEB_PORT};
         proxy_http_version 1.1;
         proxy_set_header   Upgrade $$http_upgrade;
         proxy_set_header   Connection 'upgrade';
