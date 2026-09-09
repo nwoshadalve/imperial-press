@@ -1,4 +1,12 @@
+/**
+ * Copyright (c) 2026 Imperial Press. All rights reserved.
+ *
+ * Developed by MD Nwoshad Alam Chowdhury.
+ */
+
 import type { Metadata } from 'next';
+
+import { config } from '@/config';
 
 export const metadata: Metadata = { title: 'Certificate Verification' };
 
@@ -16,7 +24,7 @@ interface CertVerifyResult {
 async function verifyCertificate(certId: string): Promise<CertVerifyResult | null> {
   try {
     const res = await fetch(
-      `${process.env.API_URL ?? 'http://localhost:8000'}/api/v1/certificates/${certId}/verify`,
+      `${config.apiBaseUrl}/api/v1/certificates/${certId}/verify`,
       { cache: 'no-store' },
     );
     if (!res.ok) return null;

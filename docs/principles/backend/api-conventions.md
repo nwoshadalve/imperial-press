@@ -123,7 +123,7 @@ Admin-only routes live in `api/v1/routes/admin/` and require `Depends(require_ro
 
 ## CORS
 
-Allowed origins: `imperialpress.com` and `admin.imperialpress.com` only. Configured in `main.py`. Never use `allow_origins=["*"]`.
+Allowed origins: the public site origin in production (admin shares it via `/admin`); local hybrid uses localhost web + admin ports. Configured in `main.py` via `ALLOWED_ORIGINS`. Never use `allow_origins=["*"]`.
 
 ## Swagger
 

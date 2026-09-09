@@ -1,27 +1,30 @@
+"""Copyright (c) 2026 Imperial Press. All rights reserved.
+
+Developed by MD Nwoshad Alam Chowdhury.
+"""
+
 from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime, timedelta
 
+import bcrypt
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from zxcvbn import zxcvbn
 
 from app.core.config import settings
 from app.core.exceptions import UnauthorizedError, ValidationAppError
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def hash_password(plain: str) -> str:
     result = zxcvbn(plain)
     if result["score"] < 2:
         raise ValidationAppError("Password is too weak")
-    return pwd_context.hash(plain)
+    return bcrypt.hashpw(plain.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain, hashed)
+    return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
 
 
 def create_access_token(user_id: uuid.UUID, roles: list[str]) -> str:

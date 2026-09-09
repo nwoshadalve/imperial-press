@@ -35,13 +35,17 @@ tests/
 ## Fixtures (conftest.py)
 
 ```python
+import os
+
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from app.main import app
+from app.core.config import settings
 from app.core.database import get_db, Base
 
-TEST_DB_URL = "postgresql+asyncpg://test:test@localhost:5432/imperial_test"
+TEST_DB_URL = os.environ.get("TEST_DATABASE_URL", settings.database_url)
+
 
 @pytest_asyncio.fixture(scope="session")
 async def engine():

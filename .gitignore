@@ -1,8 +1,10 @@
-# ── Environment ───────────────────────────────────────────────────────────────
+# ── Environment (repo root only) ──────────────────────────────────────────────
 .env
+.env.compose
 .env.local
 .env.*.local
-# Keep committed: .env.example, frontend/admin/.env.development, frontend/admin/.env.production
+# Keep committed: .env.example, .env.compose.example
+# Do not add per-app .env files under backend/, frontend-web/, or frontend-admin/
 
 # ── Node / npm ────────────────────────────────────────────────────────────────
 node_modules/
@@ -16,10 +18,10 @@ lerna-debug.log*
 # ── TypeScript ────────────────────────────────────────────────────────────────
 *.tsbuildinfo
 
-# ── Next.js (frontend/web) ────────────────────────────────────────────────────
-frontend/web/.next/
-frontend/web/out/
-frontend/web/next-env.d.ts
+# ── Next.js (frontend-web) ────────────────────────────────────────────────────
+frontend-web/.next/
+frontend-web/out/
+frontend-web/next-env.d.ts
 
 # ── Vite (frontend/admin, packages/ui) ───────────────────────────────────────
 dist/

@@ -1,45 +1,43 @@
-import Link from 'next/link';
-import { ThemeToggle } from './ThemeToggle';
-import { config } from '@/config';
+/**
+ * Copyright (c) 2026 Imperial Press. All rights reserved.
+ *
+ * Developed by MD Nwoshad Alam Chowdhury.
+ */
 
+import Link from 'next/link';
+
+import { config } from '@/config';
+import { ThemeToggle } from './ThemeToggle';
+import { NavLinks } from './NavLinks';
+import { MobileNav } from './MobileNav';
+
+/**
+ * Server-rendered header shell. Interactivity is isolated in leaf client
+ * components (NavLinks, ThemeToggle, MobileNav) so the shell ships no JS.
+ */
 export function Navbar() {
   return (
-    <header className="sticky top-0 z-50 border-b border-[var(--color-border)] bg-[var(--color-bg)]/95 backdrop-blur">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-between">
-          <Link href="/" className="text-xl font-bold text-[var(--color-text)]">
+    <header className="sticky top-0 z-50 border-b border-[var(--color-border)] bg-[var(--color-bg)]/80 backdrop-blur supports-[backdrop-filter]:bg-[var(--color-bg)]/60">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex h-16 items-center justify-between gap-4">
+          <Link
+            href="/"
+            className="shrink-0 text-lg font-bold tracking-tight text-[var(--color-text)] sm:text-xl"
+          >
             {config.siteName}
           </Link>
 
-          <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
-            <Link
-              href="/journals"
-              className="text-[var(--color-muted)] hover:text-[var(--color-text)] transition-colors"
-            >
-              Journals
-            </Link>
-            <Link
-              href="/search"
-              className="text-[var(--color-muted)] hover:text-[var(--color-text)] transition-colors"
-            >
-              Search
-            </Link>
-            <Link
-              href="/dashboard"
-              className="text-[var(--color-muted)] hover:text-[var(--color-text)] transition-colors"
-            >
-              Dashboard
-            </Link>
-          </nav>
+          <NavLinks />
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1 sm:gap-2">
             <ThemeToggle />
             <Link
               href="/login"
-              className="rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition-opacity"
+              className="hidden md:inline-flex items-center rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-medium text-[var(--color-primary-fg)] hover:bg-[var(--color-primary-hover)] transition-colors"
             >
               Sign in
             </Link>
+            <MobileNav />
           </div>
         </div>
       </div>

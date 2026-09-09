@@ -1,5 +1,19 @@
 # Coding Standards
 
+## Copyright Notice
+
+Every source file in `frontend-admin/` must begin with the following block comment (before any imports or other code):
+
+```ts
+/**
+ * Copyright (c) 2026 Imperial Press. All rights reserved.
+ *
+ * Developed by MD Nwoshad Alam Chowdhury.
+ */
+```
+
+Apply this to all `.ts` and `.tsx` files under `src/` and to root config files such as `vite.config.ts`.
+
 ## Language & Tooling
 
 - **TypeScript** everywhere — no `.js` or `.jsx` files in `src/`
@@ -92,6 +106,30 @@ export async function fetchSubmissions(params: SubmissionParams): Promise<Submis
 
 ---
 
+## Environment Variables
+
+All configuration comes from the **repo-root** `.env` — never hardcode URLs, ports, or environment-specific values in source, and never add per-app `.env` files under `frontend-admin/`.
+
+| Variable | Purpose |
+|---|---|
+| `ADMIN_PORT` | Vite dev/preview port |
+| `VITE_API_BASE_URL` | FastAPI base URL (proxy target + client config) |
+
+- Read client config only via `src/config/` (`import.meta.env`) — do not scatter `import.meta.env.*` through components
+- `vite.config.ts` must use `loadEnv` with `envDir` set to the repo root — no localhost fallbacks in code
+- Onboard by copying root `.env.example` → `.env` (and `.env.compose.example` → `.env.compose` for Docker ports)
+
+```ts
+// Good — src/config/index.ts
+import { config } from '@/config'
+const url = config.apiBaseUrl
+
+// Bad
+const url = 'http://localhost:8000'
+```
+
+---
+
 ## Error Handling
 
 - Always handle loading and error states when fetching data
@@ -118,6 +156,7 @@ export async function fetchSubmissions(params: SubmissionParams): Promise<Submis
 - Do not write class components
 - Do not call `fetch` or `axios` directly in components or pages — use hooks that call `lib/api/`
 - Do not hardcode hex colour values — use design tokens from `styles/global.css`
+- Do not hardcode URLs, ports, or other config — use the repo-root `.env` via `src/config/`
 - Do not commit commented-out code
 - Do not string-concatenate `className` — use `cn()`
 - Do not use `useEffect` to fetch data — use TanStack Query

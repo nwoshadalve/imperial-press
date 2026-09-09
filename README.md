@@ -2,6 +2,8 @@
 
 Academic publishing platform for managing journals, peer review, submissions, and open-access publication.
 
+**Setup (dev + prod):** see **[docs/setup.md](docs/setup.md)** — start there after cloning.
+
 ---
 
 ## Stack
@@ -19,114 +21,77 @@ Academic publishing platform for managing journals, peer review, submissions, an
 
 ---
 
-## Repository Structure
+## How environments work
 
-```
-imperial-press/
-├── frontend-web/     # Public website (Next.js) — imperialpress.com
-├── frontend-admin/   # Admin panel (React + Vite) — admin.imperialpress.com
-├── backend/          # REST API (FastAPI) — api.imperialpress.com
-├── docs/
-│   ├── architecture/ # Per-service architecture docs
-│   └── prd/          # Product requirements
-└── .env.example      # Environment variable template
-```
+| Mode | Apps (`web` / `admin` / `api`) | Infra (Postgres / Meili / Garage) |
+|---|---|---|
+| **Local development** | Run on your machine (hot reload) | Docker via `./scripts/compose.sh infra` |
+| **Production** (and other remote envs) | Docker | Docker via `./scripts/compose.sh prod` |
 
-Each app manages its own dependencies independently — there is no root `package.json` or npm workspaces yet. `packages/` (shared types, shared UI, shared tsconfig/eslint config), `infra/` (Docker Compose, Nginx, Garage, MeiliSearch config), and `scripts/` (one-off setup scripts) are planned but not yet scaffolded.
+Config is global: repo-root `.env` (secrets + app config) and `.env.compose` (Docker host ports). No per-app `.env` files.
+
+**Single domain:** public site at `/`, admin at `/admin`, API on its own port (`API_PORT` locally / `HOST_API_PORT` in production).
 
 ---
 
-## Development Setup
-
-In development, the three backing services (PostgreSQL, MeiliSearch, Garage) run in Docker. The three applications (web, admin, API) run locally for hot reload.
-
-### Prerequisites
-
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-- Node.js 24 LTS
-- Python 3.14 + [uv](https://docs.astral.sh/uv/)
-
-### 1. Environment
+## Quick start
 
 ```bash
 cp .env.example .env
-# Fill in secrets — see .env.example for descriptions
+cp .env.compose.example .env.compose
+# Edit secrets in .env
 ```
 
-### 2. Start backing services
+**Local development**
 
 ```bash
-cd infra/compose
-docker compose up -d
+./scripts/compose.sh infra up -d          # Windows: .\scripts\compose.ps1 infra up -d
+
+./scripts/dev-backend.sh                  # Windows: scripts\dev-backend.cmd
+                                          # → sync + migrate + http://localhost:8000
+
+cd frontend-web && npm ci && npm run dev      # → http://localhost:50173/
+cd frontend-admin && npm ci && npm run dev    # → http://localhost:50174/admin/
 ```
 
-This starts PostgreSQL (`:5432`), MeiliSearch (`:7700`), and Garage (`:3900`, `:3903`) with ports exposed locally. The MeiliSearch web UI is available at `http://localhost:7700`.
-
-### 3. Run the API
+**Production**
 
 ```bash
-cd backend
-uv sync
-uv run alembic upgrade head
-uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+./scripts/compose.sh prod up -d --build
+./scripts/compose.sh prod exec api uv run alembic upgrade head
+# Site: https://$DOMAIN/  ·  Admin: https://$DOMAIN/admin/  ·  API: :$HOST_API_PORT
 ```
 
-### 4. Run the public website
+Full steps, TLS, troubleshooting, and checklists: **[docs/setup.md](docs/setup.md)**.
 
-```bash
-cd frontend-web
-npm ci
-npm run dev
-# → http://localhost:50173
+---
+
+## Repository structure
+
 ```
-
-### 5. Run the admin panel
-
-```bash
-cd frontend-admin
-npm ci
-npm run dev
-# → http://localhost:50174
+imperial-press/
+├── frontend-web/          # Public website (Next.js) — local or Docker
+├── frontend-admin/        # Admin panel (React + Vite) — local or Docker
+├── backend/               # REST API (FastAPI) — local or Docker
+├── infra/                 # Compose, Dockerfiles, Nginx, Postgres, Garage
+├── scripts/               # compose.sh / compose.ps1 (infra | prod | cert)
+├── compose.yaml           # Root Compose entry
+├── .env.example           # Secrets & app config template
+├── .env.compose.example   # Host publish ports template
+└── docs/
+    └── setup.md           # ← onboarding guide
 ```
 
 ---
 
-## Production Deployment
-
-All services run in Docker. See [docs/architecture/infra.md](docs/architecture/infra.md) for the full runbook including SSL certificate issuance and Garage bucket setup.
-
-```bash
-# Build and start everything
-docker compose \
-  -f infra/compose/docker-compose.yml \
-  -f infra/compose/docker-compose.prod.yml \
-  up -d --build
-
-# Apply database migrations
-docker compose -f infra/compose/docker-compose.yml exec api \
-  uv run alembic upgrade head
-```
-
-Deploying a new version:
-
-```bash
-git pull origin main
-docker compose \
-  -f infra/compose/docker-compose.yml \
-  -f infra/compose/docker-compose.prod.yml \
-  up -d --build --no-deps web admin api
-docker compose -f infra/compose/docker-compose.yml exec api \
-  uv run alembic upgrade head
-```
-
----
-
-## Architecture Docs
+## Architecture docs
 
 | Document | Contents |
 |---|---|
-| [docs/architecture/infra.md](docs/architecture/infra.md) | Docker Compose, Nginx, deployment runbook, SSL, backups |
-| [docs/architecture/storage.md](docs/architecture/storage.md) | Garage S3, bucket structure, presigned URLs, FastAPI integration |
-| [docs/architecture/backend.md](docs/architecture/backend.md) | FastAPI structure, modules, auth, DB, MeiliSearch integration |
-| [docs/architecture/frontend-web.md](docs/architecture/frontend-web.md) | Next.js rendering strategy (SSG/ISR/SSR/CSR), route map |
-| [docs/architecture/frontend-admin.md](docs/architecture/frontend-admin.md) | Admin SPA, Tailwind + Radix UI (shadcn/ui pattern) architecture |
+| [docs/setup.md](docs/setup.md) | **Clone → run** for local and production |
+| [docs/default-admin-credentials.md](docs/default-admin-credentials.md) | Bootstrap admin email / password |
+| [docs/architecture/infra.md](docs/architecture/infra.md) | Docker Compose, Nginx, SSL, backups |
+| [docs/architecture/storage.md](docs/architecture/storage.md) | Garage S3, buckets, FastAPI integration |
+| [docs/architecture/backend.md](docs/architecture/backend.md) | FastAPI structure, auth, DB, MeiliSearch |
+| [docs/architecture/frontend-web.md](docs/architecture/frontend-web.md) | Next.js rendering strategy, route map |
+| [docs/architecture/frontend-admin.md](docs/architecture/frontend-admin.md) | Admin SPA architecture |

@@ -1,19 +1,27 @@
+/**
+ * Copyright (c) 2026 Imperial Press. All rights reserved.
+ *
+ * Developed by MD Nwoshad Alam Chowdhury.
+ */
+
 import axios from 'axios';
 
+import { config } from '@/config';
+
 export const apiClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000',
+  baseURL: config.apiBaseUrl,
   withCredentials: true,
 });
 
-apiClient.interceptors.request.use((config) => {
+apiClient.interceptors.request.use((requestConfig) => {
   if (typeof window !== 'undefined') {
     const { useAuthStore } = require('@/stores/authStore') as typeof import('@/stores/authStore');
     const token = useAuthStore.getState().accessToken;
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      requestConfig.headers.Authorization = `Bearer ${token}`;
     }
   }
-  return config;
+  return requestConfig;
 });
 
 let isRefreshing = false;
@@ -45,7 +53,7 @@ apiClient.interceptors.response.use(
 
       try {
         const { data } = await axios.post<{ access_token: string }>(
-          `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000'}/api/v1/auth/refresh`,
+          `${config.apiBaseUrl}/api/v1/auth/refresh`,
           {},
           { withCredentials: true },
         );

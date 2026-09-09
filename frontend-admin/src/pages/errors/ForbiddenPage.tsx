@@ -1,3 +1,9 @@
+/**
+ * Copyright (c) 2026 Imperial Press. All rights reserved.
+ *
+ * Developed by MD Nwoshad Alam Chowdhury.
+ */
+
 import { useNavigate } from 'react-router-dom'
 import { ShieldOff, ArrowLeft, LayoutDashboard } from 'lucide-react'
 import { Button } from '@/components/ui/button'

@@ -1,3 +1,9 @@
+/**
+ * Copyright (c) 2026 Imperial Press. All rights reserved.
+ *
+ * Developed by MD Nwoshad Alam Chowdhury.
+ */
+
 import { Loader2 } from 'lucide-react'
 
 /** Shown while lazy route modules load on the initial render (React Router 7). */

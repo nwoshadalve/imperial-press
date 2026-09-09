@@ -1,0 +1,12 @@
+# Root Compose entry — run from the repository root via scripts/compose.*.
+#
+# Local hybrid (infra only):
+#   ./scripts/compose.sh infra up -d
+#
+# Production (everything in Docker):
+#   ./scripts/compose.sh prod up -d --build
+
+name: imperial-press
+
+include:
+  - path: infra/compose/docker-compose.yml

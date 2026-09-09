@@ -17,6 +17,8 @@ Python 3.14 · FastAPI 0.139 · SQLAlchemy 2.0 (async) · Alembic · PostgreSQL 
 
 ## Core Rules
 
+- **Copyright header on every file** — all `.py` files start with the Imperial Press copyright notice; see [coding-standards.md](./coding-standards.md)
+- **All config from root `.env`** — never hardcode URLs, secrets, ports, or environment-specific values; load only via `app/core/config.py` (`pydantic-settings` reads the monorepo-root `.env` / `.env.example`)
 - **Domain modules own everything** — models, repository, service, and schemas live together under `modules/<domain>/`
 - **Routes call service only** — never import repository functions into route files
 - **Service calls repository** — business logic, rules, and side-effects live in service; raw DB queries live in repository

@@ -1,6 +1,13 @@
+"""Copyright (c) 2026 Imperial Press. All rights reserved.
+
+Developed by MD Nwoshad Alam Chowdhury.
+"""
+
 from __future__ import annotations
 
 import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
@@ -11,18 +18,28 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
 from app.api.v1.router import router as api_v1_router
+import app.models  # noqa: F401  # register ORM models for relationship resolution
 from app.core.config import settings
 from app.core.exceptions import AppError
+from app.core.seed import ensure_default_admin
 
 logger = logging.getLogger(__name__)
 
 limiter = Limiter(key_func=get_remote_address)
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    await ensure_default_admin()
+    yield
+
 
 app = FastAPI(
     title="Imperial Press API",
     version="1.0.0",
     docs_url="/docs" if settings.enable_swagger else None,
     redoc_url="/redoc" if settings.enable_swagger else None,
+    lifespan=lifespan,
 )
 
 app.state.limiter = limiter

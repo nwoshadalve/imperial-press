@@ -20,9 +20,11 @@ Choose rendering strategy at the **route level**, not the component level. This 
 Use `fetch()` in a Server Component with the appropriate cache option. Never use a Client Component just to fetch data that could be fetched server-side.
 
 ```tsx
+import { config } from '@/config';
+
 // ISR — cached until FastAPI webhook triggers revalidation
 async function JournalPage({ params }: { params: { slug: string } }) {
-  const journal = await fetch(`${process.env.API_URL}/api/v1/journals/${params.slug}`, {
+  const journal = await fetch(`${config.apiBaseUrl}/api/v1/journals/${params.slug}`, {
     next: { tags: [`journal-${params.slug}`] },
   }).then(r => r.json());
 
@@ -31,7 +33,7 @@ async function JournalPage({ params }: { params: { slug: string } }) {
 
 // SSR — never cached; always fresh
 async function CertVerifyPage({ params }: { params: { certId: string } }) {
-  const result = await fetch(`${process.env.API_URL}/api/v1/certificates/${params.certId}/verify`, {
+  const result = await fetch(`${config.apiBaseUrl}/api/v1/certificates/${params.certId}/verify`, {
     cache: 'no-store',
   }).then(r => r.json());
 
@@ -142,10 +144,11 @@ The `/search` page calls MeiliSearch directly from the browser using a **search-
 
 ```ts
 import { MeiliSearch } from 'meilisearch';
+import { config } from '@/config';
 
 const client = new MeiliSearch({
-  host: process.env.NEXT_PUBLIC_MEILISEARCH_HOST!,
-  apiKey: process.env.NEXT_PUBLIC_MEILISEARCH_SEARCH_KEY!, // read-only, scoped
+  host: config.meilisearchHost,
+  apiKey: config.meilisearchSearchKey, // read-only, scoped
 });
 ```
 

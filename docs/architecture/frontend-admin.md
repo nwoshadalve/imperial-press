@@ -2,7 +2,7 @@
 
 **Tech:** React 19.2 · Vite 8.1 · TypeScript 6.0 · Tailwind CSS 4.3 · Radix UI  
 **Serves:** Imperial Press internal staff (admins / editors)  
-**URL:** `admin.imperialpress.com` (Nginx → port 3001)
+**URL:** `https://$DOMAIN/admin/` (Nginx path prefix → port 3001; local: `http://localhost:50174/admin/`)
 
 ---
 
@@ -197,13 +197,13 @@ Routes are defined via React Router v6 `createBrowserRouter`. All routes under `
 
 Admin login is completely separate from public-facing author/reviewer login:
 
-- URL: `admin.imperialpress.com/login`
+- URL: `https://$DOMAIN/admin/login` (local: `http://localhost:50174/admin/login`)
 - `POST /api/auth/admin/login` — returns access token (JWT with `role: admin` claim)
 - Token stored in **memory** (Zustand `authStore`) + **HttpOnly cookie** for refresh
 - Every API request attaches `Authorization: Bearer <token>` via an axios interceptor
 - On 401, the interceptor attempts a silent refresh; on failure, redirects to `/login`
 
-Nginx enforces `admin.imperialpress.com` only serves on HTTPS and blocks all unauthenticated API calls at the network level as a defence-in-depth layer. FastAPI also validates the `admin` role claim on every admin endpoint independently.
+Nginx serves the admin SPA under `/admin` on the single site domain (HTTPS in production). FastAPI validates the `admin` role claim on every admin endpoint independently.
 
 ---
 
